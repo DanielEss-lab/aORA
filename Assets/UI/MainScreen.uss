@@ -1,0 +1,66 @@
+.my-button {
+    color: white;
+    background-color: lightblue;
+    font-size: 42px;
+    padding: 5px;
+    margin-top: 10px;
+    border-radius: 15px;
+    border-color: lightblue;
+    white-space: normal;
+    overflow: visible;
+}
+
+.my-foldout {
+    min-height: 60px;
+    color: black;
+    background-color: white;
+    font-size: 42px;
+}
+
+.my-scrollview {
+    width: 90%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.my-scrollview.scrollbar_groove {
+    display: none;
+}
+
+#unity-low-button {
+    display: none;
+}
+
+#unity-high-button {
+    display: none;
+}
+
+#unity-tracker {
+    display: none;
+}
+
+#unity-dragger {
+    background-color: lightgray;
+    border-radius: 6px;
+    max-height: 400px;
+}
+
+.my-toggle-button {
+    color: lightblue;
+    font-size: 40px;
+    margin-right: 20px;
+    align-self: flex-end;
+    margin-bottom: 5px;
+}
+
+/*.my-toggle .unity-toggle__checkmark {
+    border-radius: 50%;
+    width: 60%;
+    height: 60%;
+    background-color: rgb(0, 120, 212);
+}*/
+
+.ui_page {
+    margin-top: 100px;
+    flex-direction: column;
+}
