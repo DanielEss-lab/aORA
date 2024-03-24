@@ -53,6 +53,59 @@
     margin-bottom: 5px;
 }
 
+.toggleInput .unity-toggle__checkmark{
+    display: none;
+    opacity: 0;
+    background-color: red;
+}
+
+
+.unity-base-dropdown__item{
+
+	background-color: transparent;
+	border-width: 0;
+
+
+}
+
+.unity-base-dropdown__item .unity-label{
+
+	color: blue;
+
+}
+
+.unity-base-dropdown .unity-scroll-view , .unity-base-dropdown__container-outer, .unity-base-popup-field:hover > .unity-base-popup-field__input, .unity-base-popup-field:active ,.unity-base-field__input, .unity-base-popup-field:active > .unity-base-popup-field__input{
+
+	background-color: transparent;
+	border-width: 0;
+
+
+}
+
+
+
+.unity-base-popup-field__arrow{
+    display: none;
+}
+
+#fastforward{
+    background-image: resource('Assets/Materials/icons/fast-forward-100.png');
+    background-size: cover; /* Or use 100% 100% to fill the entire button */
+
+    /* Set width and height as needed */
+    width: 100px;
+    height: 100px;
+}
+
+#fastbackward{
+    background-image: resource('Assets/Materials/icons/rewind-100.png');
+    background-size: cover; /* Or use 100% 100% to fill the entire button */
+
+    /* Set width and height as needed */
+    width: 100px;
+    height: 100px;
+}
+
 /*.my-toggle .unity-toggle__checkmark {
     border-radius: 50%;
     width: 60%;

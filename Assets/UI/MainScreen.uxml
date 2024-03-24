@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <Style src="project://database/Assets/UI/MainScreen.uss?fileID=7433441132597879392&amp;guid=6de1d4320b31c2f4aa8990c453a67de9&amp;type=3#FoldOutView" />
+    <Style src="project://database/Assets/UI/MainScreen.uss?fileID=7433441132597879392&amp;guid=b353b70d7d48cf54baae9c9c543dcb25&amp;type=3#MainScreen" />
     <SafeAreaManager>
         <ui:VisualElement>
             <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); min-width: 3000px; min-height: 3000px; position: relative;">
@@ -10,14 +10,16 @@
                 <ui:ScrollView name="container" touch-scroll-type="Clamped" elasticity="0.1" scroll-deceleration-rate="0.5" class="my-scrollview" style="margin-top: 5px; opacity: 1; height: auto; flex-grow: 1;" />
             </ui:VisualElement>
             <ui:VisualElement name="ui_page_2" class="ui_page" style="position: absolute; flex-grow: 1; display: flex; left: 0; top: 0; right: 0; bottom: 0; visibility: hidden; background-color: rgba(0, 0, 0, 0);">
-                <ui:VisualElement name="Top" style="position: absolute; left: 0; top: 0; right: 0; background-color: rgb(0, 250, 234); min-height: 30%;">
-                    <ui:Label tabindex="-1" text="Label" display-tooltip-when-elided="true" style="font-size: 50px;" />
-                    <ui:Toggle label="Toggle" />
+                <ui:VisualElement name="Top" style="position: absolute; left: 0; top: 0; right: 0; background-color: rgb(255, 255, 255); min-height: 10%;">
+                    <ui:Label name="reaction_name" text="Initial Text" style="font-size: 50px; visibility: hidden;" />
+                    <ui:Label name="elements_angle" text="Initial Text" style="font-size: 50px; visibility: hidden;" />
                 </ui:VisualElement>
-                <ui:VisualElement name="Bottom" style="position: absolute; bottom: 0; right: 0; left: 0; background-color: rgb(255, 6, 6); min-height: 30%;">
-                    <ui:Button text="Button" display-tooltip-when-elided="true" style="background-color: rgb(242, 255, 0);" />
+                <ui:VisualElement name="Bottom" style="position: absolute; bottom: 0; right: 0; left: 0; background-color: rgb(255, 255, 255); min-height: 30%; align-items: center; align-self: center; justify-content: center; flex-direction: row; flex-grow: 1; flex-wrap: wrap;">
+                    <ui:Button name="fastbackward" display-tooltip-when-elided="true" style="background-color: transparent; border-top-width: 0; border-right-width: 0; border-bottom-width: 0; border-left-width: 0; margin-right: 4%; margin-left: 4%;" />
+                    <ui:Toggle name="pauseButton" value="false" class="toggleInput" style="background-color: rgb(255, 255, 255); width: 100px; height: 100px; align-self: center; justify-content: center; margin-right: 4%; margin-left: 4%;" />
+                    <ui:Button name="fastforward" display-tooltip-when-elided="true" style="background-color: rgba(0, 0, 0, 0); border-top-width: 0; border-right-width: 0; border-bottom-width: 0; border-left-width: 0; margin-right: 4%; margin-left: 4%;" />
+                     <ui:DropdownField name="speedControl" index="1" choices="0.5X, 1X, 2X" focusable="false" style="color: rgb(0, 27, 255);" />
                 </ui:VisualElement>
-                <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); min-width: 3000px; min-height: 3000px; position: relative;" />
             </ui:VisualElement>
         </ui:VisualElement>
     </SafeAreaManager>
