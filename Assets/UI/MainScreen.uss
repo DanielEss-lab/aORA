@@ -102,7 +102,7 @@
 }
 
 #fastforward{
-    background-image: resource('fast-forward-100.png');
+
     background-size: cover; /* Or use 100% 100% to fill the entire button */
 
     /* Set width and height as needed */
@@ -111,7 +111,7 @@
 }
 
 #fastbackward{
-    background-image: resource('rewind-100.png');
+
     background-size: cover; /* Or use 100% 100% to fill the entire button */
 
     /* Set width and height as needed */

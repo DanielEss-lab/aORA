@@ -329,105 +329,51 @@ public class MainScreen : MonoBehaviour
     // This method starts the coroutine and assumes 'filePath' is a valid path to your file
     public void LoadFrameData(string filePath)
     {
-        //StartCoroutine(ReadFileAndParseFrames(filePath));
-        ProcessFileSynchronously(filePath);
+        StartCoroutine(LoadFileFromStreamingAssets(filePath));
     }
 
-    private void ProcessFileSynchronously(string filePath)
+    IEnumerator LoadFileFromStreamingAssets(string filePath)
     {
 
-        if (File.Exists(filePath))
-        {
 
-            UnityWebRequest loadingRequest = UnityWebRequest.Get(filePath);
-            loadingRequest.SendWebRequest();
-            while (!loadingRequest.isDone && !loadingRequest.isNetworkError && !loadingRequest.isHttpError) ;
+        Debug.Log("File before unitywebrequest: " + filePath);
+
+        using (UnityWebRequest loadingRequest = UnityWebRequest.Get(filePath))
+        {
+            yield return loadingRequest.SendWebRequest();
+
             if (loadingRequest.result != UnityWebRequest.Result.Success)
             {
-                Debug.Log("loading error: " + loadingRequest.error);
+                Debug.LogError("Loading error: " + loadingRequest.error);
+                yield break;
             }
 
             Debug.Log("File found: " + filePath);
             string textString = System.Text.Encoding.UTF8.GetString(loadingRequest.downloadHandler.data);
-            List<string> textlines = new List<string>(textString.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None));
+
+            List<string> readLines = new List<string>(textString.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None));
             Frame currentFrame = new Frame();
-            foreach (var line in textlines)
+
+            foreach (var line in readLines)
             {
-                readText.Add(line);
                 if (line.Trim() == "M  END")
                 {
                     currentFrame.lines.Add(line);
                     frames.Add(currentFrame);
-                    currentFrame = new Frame(); // Start a new frame
+                    currentFrame = new Frame(); // Prepare for a new frame
                 }
                 else
                 {
-                    currentFrame.lines.Add(line); // Add the line to the current frame
+                    currentFrame.lines.Add(line); // Add line to the current frame
                 }
             }
+
+            // Process frames as needed
+
+            Debug.Log($"Finished processing. Total frames: {frames.Count}");
+            totalFrames = frames.Count;
         }
-        else
-        {
-            Debug.LogError("File not found: " + filePath);
-            return;
-        }
-
-        
-
-        // Add the last frame if it has any lines
-        //if (currentFrame.lines.Count > 0)
-        //{
-        //    frames.Add(currentFrame);
-        //}
-
-        Debug.Log($"Finished processing. Total frames: {frames.Count}");
-        totalFrames = frames.Count;
     }
-
-    //Keep this code in case we want to do lazy loading with super large files
-    //private IEnumerator ReadFileAndParseFrames(string filePath)
-    //{
-    //    if (!File.Exists(filePath))
-    //    {
-    //        Debug.LogError("File not found: " + filePath);
-    //        yield break;
-    //    }
-
-    //    using (var reader = new StreamReader(filePath))
-    //    {
-    //        string line;
-    //        Frame currentFrame = new Frame();
-    //        while ((line = reader.ReadLine()) != null)
-    //        {
-    //            readText.Add(line);
-    //            if (line.Trim() == "M  END")
-    //            {
-    //                // When encountering a frame separator, add the current frame to the list and start a new one
-    //                frames.Add(currentFrame);
-    //                currentFrame = new Frame();
-
-    //                // Optionally yield to keep the UI responsive, especially after completing a frame
-    //                yield return null;
-    //            }
-    //            else
-    //            {
-    //                // Add the line to the current frame
-    //                currentFrame.lines.Add(line);
-    //            }
-
-    //            // Optionally yield periodically based on conditions like 'Time.frameCount' to maintain responsiveness
-    //        }
-
-    //        // Add the last frame if it contains any lines
-    //        if (currentFrame.lines.Count > 0)
-    //        {
-    //            frames.Add(currentFrame);
-    //        }
-    //    }
-
-    //    Debug.Log($"Finished parsing. Total frames: {frames.Count}");
-    //}
-
 
 
     private void ButtonClicked(Reaction reaction)
@@ -1095,9 +1041,14 @@ public class MainScreen : MonoBehaviour
 
     void ColorAllButtons()
     {
+        var fastForwardIcon = Resources.Load<Texture2D>("fast-forward-100");
+        var fastBackwardIcon = Resources.Load<Texture2D>("rewind-100");
+
+
         fastForwardButton = rootElement.Q<Button>("fastforward");
         if (fastForwardButton != null)
         {
+            fastForwardButton.style.backgroundImage = new StyleBackground(fastForwardIcon);
             // Programmatically change the tint color of the element
             // Note: This specific approach does not apply directly as UI Toolkit does not support backgroundImageTintColor in USS
             // You'd need to adjust the material or shader of the image asset used or manage color tinting through other means
@@ -1114,6 +1065,7 @@ public class MainScreen : MonoBehaviour
             // Programmatically change the tint color of the element
             // Note: This specific approach does not apply directly as UI Toolkit does not support backgroundImageTintColor in USS
             // You'd need to adjust the material or shader of the image asset used or manage color tinting through other means
+            fastBackwardButton.style.backgroundImage = new StyleBackground(fastBackwardIcon);
             fastBackwardButton.style.unityBackgroundImageTintColor = Color.blue; // RGBA
         }
         fastBackwardButton.RegisterCallback<ClickEvent>(evt =>
