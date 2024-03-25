@@ -12,10 +12,11 @@ using UnityEngine.UIElements;
 using Button = UnityEngine.UIElements.Button;
 using Toggle = UnityEngine.UIElements.Toggle;
 using System.Linq;
-using static Unity.VisualScripting.Metadata;
 using System;
 using System.Text.RegularExpressions;
 using TMPro;
+using static UnityEngine.ParticleSystem;
+using Slider = UnityEngine.UIElements.Slider;
 
 [System.Serializable]
 public class Reaction
@@ -92,6 +93,7 @@ public class MainScreen : MonoBehaviour
     private int framecounter = 0;
     private int currentPanelIndex;
     private int currentIndex = 0;
+    private int frameIndex = 0;
 
     private List<String> hightLighted;
     private List<String> readText;
@@ -137,6 +139,8 @@ public class MainScreen : MonoBehaviour
 
     private float zoomMin = 0.1f;
     private float zoomMax = 179.0f;
+
+    private Slider frameSlider;
 
 
     public bool IsExpanded
@@ -287,16 +291,16 @@ public class MainScreen : MonoBehaviour
             switch (selectedOption)
             {
                 case "0.5X":
-                    speed = 0.5f;
+                    playbackRate = 30f;
                     break;
                 case "1X":
-                    speed = 2f;
+                    playbackRate = 80f;
                     break;
                 case "2X":
-                    speed = 4f;
+                    playbackRate = 200f;
                     break;
                 default:
-                    speed = 2f; // Default speed if none of the options match
+                    playbackRate = 50f; // Default speed if none of the options match
                     break;
             }
 
@@ -331,34 +335,53 @@ public class MainScreen : MonoBehaviour
 
     private void ProcessFileSynchronously(string filePath)
     {
-        if (!File.Exists(filePath))
+
+        if (File.Exists(filePath))
+        {
+
+            UnityWebRequest loadingRequest = UnityWebRequest.Get(filePath);
+            loadingRequest.SendWebRequest();
+            while (!loadingRequest.isDone && !loadingRequest.isNetworkError && !loadingRequest.isHttpError) ;
+            if (loadingRequest.result != UnityWebRequest.Result.Success)
+            {
+                Debug.Log("loading error: " + loadingRequest.error);
+            }
+
+            Debug.Log("File found: " + filePath);
+            string textString = System.Text.Encoding.UTF8.GetString(loadingRequest.downloadHandler.data);
+            List<string> textlines = new List<string>(textString.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None));
+            Frame currentFrame = new Frame();
+            foreach (var line in textlines)
+            {
+                readText.Add(line);
+                if (line.Trim() == "M  END")
+                {
+                    currentFrame.lines.Add(line);
+                    frames.Add(currentFrame);
+                    currentFrame = new Frame(); // Start a new frame
+                }
+                else
+                {
+                    currentFrame.lines.Add(line); // Add the line to the current frame
+                }
+            }
+        }
+        else
         {
             Debug.LogError("File not found: " + filePath);
             return;
         }
 
-        Frame currentFrame = new Frame();
-        foreach (var line in File.ReadLines(filePath))
-        {
-            readText.Add(line);
-            if (line.Trim() == "M  END")
-            {
-                frames.Add(currentFrame);
-                currentFrame = new Frame(); // Start a new frame
-            }
-            else
-            {
-                currentFrame.lines.Add(line); // Add the line to the current frame
-            }
-        }
+        
 
         // Add the last frame if it has any lines
-        if (currentFrame.lines.Count > 0)
-        {
-            frames.Add(currentFrame);
-        }
+        //if (currentFrame.lines.Count > 0)
+        //{
+        //    frames.Add(currentFrame);
+        //}
 
         Debug.Log($"Finished processing. Total frames: {frames.Count}");
+        totalFrames = frames.Count;
     }
 
     //Keep this code in case we want to do lazy loading with super large files
@@ -421,6 +444,7 @@ public class MainScreen : MonoBehaviour
         AtomNames = new Dictionary<int, String>();
         currentIndex = 0;
         framecounter = 0;
+        frameIndex = 0;
         curReaction = InstantiatePrefabByName(reaction.filename);
         reaction_name.text = reaction.reactionName;
         reaction_name.visible = true;
@@ -444,26 +468,8 @@ public class MainScreen : MonoBehaviour
         filePath = filePath + ".sdf";
 
         Debug.Log("File before found: " + filePath);
-        //if (File.Exists(filePath))
-        //{
 
-        //UnityWebRequest loadingRequest = UnityWebRequest.Get(filePath);
-        //loadingRequest.SendWebRequest();
-        //while (!loadingRequest.isDone && !loadingRequest.isNetworkError && !loadingRequest.isHttpError) ;
-        //if (loadingRequest.result != UnityWebRequest.Result.Success)
-        //{
-        //    Debug.Log("loading error: " + loadingRequest.error);
-        //}
-
-        //Debug.Log("File found: " + filePath);
-        //string textString = System.Text.Encoding.UTF8.GetString(loadingRequest.downloadHandler.data);
-        ////readText = new List<string> (File.ReadAllLines(filePath));
-        //MatchCollection matches = Regex.Matches(textString, endPattern);
-
-        //totalFrames = matches.Count != 0 ? matches.Count : totalFrames;
-
-        //readText = new List<string>(textString.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None));
-        readText = new List<string>();
+            readText = new List<string>();
         LoadFrameData(filePath);
          
         isRead = true;
@@ -668,6 +674,9 @@ public class MainScreen : MonoBehaviour
         elements_angle.visible = true;
     }
 
+    private float playbackRate = 50.0f; // Frames per second
+    private float timeSinceLastFrameChange = 0.0f;
+
     private void Update()
     {
         if (isInertiaActive)
@@ -754,9 +763,14 @@ public class MainScreen : MonoBehaviour
                 }
                 else if (touch.phase == TouchPhase.Moved)
                 {
+                    // Calculate rotation around the y-axis
+                    float rotationY = touch.deltaPosition.x * rotSpeed;
+                    // Calculate rotation around the x-axis
+                    float rotationX = -touch.deltaPosition.y * rotSpeed;
 
-
-                    wholeReaction.transform.Rotate(touch.deltaPosition.y * rotSpeed, -touch.deltaPosition.x * rotSpeed, 0, Space.Self);
+                    //wholeReaction.transform.Rotate(touch.deltaPosition.y * rotSpeed, -touch.deltaPosition.x * rotSpeed, 0, Space.Self);
+                    wholeReaction.transform.Rotate(Vector3.up, rotationY, Space.Self);
+                    wholeReaction.transform.Rotate(Vector3.right, rotationX, Space.World);
 
                 }
                 else if (touch.phase == TouchPhase.Ended)
@@ -772,196 +786,218 @@ public class MainScreen : MonoBehaviour
         List<String> atomNameIndex = new List<String>();
         List<String> bonds = new List<String>();
 
-        GameObject cylinder;
-        namecounter = 1;
-        while (isLooping && isRead && readText.Count > 0)
+        float frameInterval = 1.0f / playbackRate;
+
+        // Accumulate elapsed time
+        timeSinceLastFrameChange += Time.deltaTime;
+
+        // Determine how many frames to advance based on the elapsed time and playback rate
+        int framesToAdvance = Mathf.FloorToInt(timeSinceLastFrameChange / frameInterval);
+
+        // Check if it's time to advance to the next frame based on the playback rate
+        if (framesToAdvance > 0)
         {
+            // Reset the accumulator
+            timeSinceLastFrameChange -= framesToAdvance * frameInterval; // Use subtraction to maintain accuracy over time
 
-            DestroyObjects();
-            string s = readText[currentIndex];
-            currentIndex = (currentIndex + 1) % readText.Count;
-            //if (readText.Count != 0)
-            //{
-            //    Debug.Log("total Frames" + readText.Count + " frameCounter " + currentIndex +"percentage: "+ GetPercentage());
-            //}
-            Match match = Regex.Match(s, pattern);
-            if (match.Success)
+            // Advance the frame index, taking care to loop back to the start as needed
+            frameIndex = (frameIndex + framesToAdvance) % frames.Count;
+
+            // Render the current frame
+            GameObject cylinder;
+            namecounter = 1;
+            currentIndex = 0;
+            while (isLooping && isRead && currentIndex < frames[frameIndex].lines.Count)
             {
 
-                // Debug.Log(match.Value.Substring(match.Value.Length - 1) + namecounter );
-                atoms.Add(match.Value);
-                atomNameIndex.Add(match.Value.Substring(match.Value.Length - 1));
-                namecounter += 1;
-
-            }
-
-            match = Regex.Match(s, bondpattern);
-            if (match.Success)
-            {
-                bonds.Add(match.Value);
-            }
-
-
-            match = Regex.Match(s, endPattern);
-            if (match.Success)
-            {
-                framecounter += 1;
-                // Debug.Log("frame counter: " + framecounter);
-                for (int i = 1; i < namecounter; i++)
-                {
-                    String line = atoms[i - 1];
-                    String[] atomPos = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                    Vector3 position = new Vector3(float.Parse(atomPos[0]), float.Parse(atomPos[1]), float.Parse(atomPos[2]));
-
-
-                    if (framecounter == 1)
-                    {
-
-                        MinX = Math.Min(MinX, float.Parse(atomPos[0]));
-                        MinY = Math.Min(MinY, float.Parse(atomPos[1]));
-                        MaxX = Math.Max(MaxX, float.Parse(atomPos[0]));
-                        MaxY = Math.Max(MaxY, float.Parse(atomPos[1]));
-                        float reactionWidth = MaxX - MinX;
-                        var width = Camera.main.orthographicSize * 2.0 * Screen.width / Screen.height;
-
-                        scaleFactor = (float)width / reactionWidth;
-
-
-                    }
-                    curReaction.transform.localScale = new Vector3(scaleFactor * 1.2f, scaleFactor * 1.2f, scaleFactor * 1.2f);
-                    String atomName = atomPos[3] + i.ToString().PadLeft(namecounter.ToString().Length, '0');
-                    Vector3 newPosition = Vector3.Lerp(Children[AtomNames[i]].localPosition, position, Time.deltaTime * speed);
-                    Children[AtomNames[i]].localPosition = newPosition;
-
-                }
-                foreach (String bond in bonds)
-                {
-
-                    String[] connection = bond.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-
-
-
-                    String bondType = connection[2];
-                    String atom1 = AtomNames[int.Parse(connection[0])];
-                    String atom2 = AtomNames[int.Parse(connection[1])];
-                    Vector3 midpoint = (Children[atom1].position + Children[atom2].position) / 2f;
-
-                    switch (bondType)
-                    {
-
-                        case "0.5":
-                            ExpandObjects(halfBond, Children[atom1].position, Children[atom2].position, "repeat");
-                            break;
-                        case "1":
-                            try
-                            {
-                                ExpandObjects(singleBond, Children[atom1].position, Children[atom2].position, "stretch");
-
-                            }
-                            catch (NullReferenceException e)
-                            {
-                                Debug.LogError("Caught a null reference exception: " + e.Message);
-                                // Handle the exception or recover from it
-                            }
-
-                            break;
-                        case "1.5":
-                            ExpandObjects(oneAndHalfBond, Children[atom1].position, Children[atom2].position, "stretch");
-                            break;
-                        case "2":
-                            ExpandObjects(doubleBond, Children[atom1].position, Children[atom2].position, "stretch");
-                            break;
-                        case "2.5":
-                            ExpandObjects(twoAndHalfBond, Children[atom1].position, Children[atom2].position, "repeat");
-                            break;
-                        case "3":
-                            ExpandObjects(tripleBond, Children[atom1].position, Children[atom2].position, "stretch");
-                            break;
-                        default:
-                            ExpandObjects(singleBond, Children[atom1].position, Children[atom2].position, "stretch");
-                            break;
-                    }
-
-                }
-                timer -= Time.deltaTime;
-
-                if (timer <= 0f)
-                {
-                    // Perform your calculation here
-                    // float result = CalcDihedral(...);
-
-                    timer = interval; // Reset the timer
-                }
-
-                //generate hightlighted lines
-                if (hightLighted.Count > 0)
-                {
-                    ShowElementAngleText();
-                    // Format each string and combine them
-                    string combinedString = "";
-                    foreach (string str in hightLighted)
-                    {
-                        string text = Regex.Replace(str, @"\d+", "");
-                        combinedString += $"Atom:       {text}\n";
-                    }
-                    elements_angle.text = combinedString;
-                    // Get the LineRenderer component from the instantiated object
-                    LineRenderer lineRenderer = LineInstance.GetComponent<LineRenderer>();
-
-                    // Set properties for the LineRenderer
-                    lineRenderer.positionCount = hightLighted.Count; // We're drawing a simple line, so we need 2 positions
-
-                    // Set the positions for the LineRenderer
-                    for (int i = 0; i < hightLighted.Count; i++)
-                    {
-                        Debug.Log(i);
-                        lineRenderer.SetPosition(i, Children[hightLighted[i]].position);
-                        lineRenderer.transform.SetParent(curBond.transform);
-                    }
-
-                    if (hightLighted.Count == 2)
-                    {
-                        float distance = (float)Math.Round(Vector3.Distance(Children[hightLighted[0]].position, Children[hightLighted[1]].position), 2);
-                        combinedString += $"Distance:       {distance}\n";
-                        elements_angle.text = combinedString;
-                    }
-                    if (hightLighted.Count == 3)
-                    {
-                        Vector3 side1 = Children[hightLighted[0]].position - Children[hightLighted[1]].position;
-                        Vector3 side2 = Children[hightLighted[2]].position - Children[hightLighted[1]].position;
-                        combinedString += $"Angle:       {(int)Math.Round(Vector3.Angle(side1, side2))}\n";
-                        elements_angle.text = combinedString;
-                    }
-                    if (hightLighted.Count == 4)
-                    {
-                        float dia_angle = CalcDihedral(Children[hightLighted[0]].position, Children[hightLighted[1]].position, Children[hightLighted[2]].position, Children[hightLighted[3]].position);
-                        combinedString += $"Diahedral Angle:       {(int)Math.Round(dia_angle)}\n";
-                        elements_angle.text = combinedString;
-                    }
-
-
-
-
-                }
-                namecounter = 1;
-                //atoms = new List<String>();
-                //bonds = new List<String>();
+                DestroyObjects();
+                //string s = readText[currentIndex];
                 //currentIndex = (currentIndex + 1) % readText.Count;
-                break;
+                string s = frames[frameIndex].lines[currentIndex];
+                currentIndex = (currentIndex + 1);
+                Match match = Regex.Match(s, pattern);
+                if (match.Success)
+                {
+
+                    // Debug.Log(match.Value.Substring(match.Value.Length - 1) + namecounter );
+                    atoms.Add(match.Value);
+                    atomNameIndex.Add(match.Value.Substring(match.Value.Length - 1));
+                    namecounter += 1;
+
+                }
+
+                match = Regex.Match(s, bondpattern);
+                if (match.Success)
+                {
+                    bonds.Add(match.Value);
+                }
+
+
+                match = Regex.Match(s, endPattern);
+                if (match.Success)
+                {
+                    framecounter += 1;
+                    // Debug.Log("frame counter: " + framecounter);
+                    for (int i = 1; i < namecounter; i++)
+                    {
+                        String line = atoms[i - 1];
+                        String[] atomPos = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                        Vector3 position = new Vector3(float.Parse(atomPos[0]), float.Parse(atomPos[1]), float.Parse(atomPos[2]));
+
+
+                        if (framecounter == 1)
+                        {
+
+                            MinX = Math.Min(MinX, float.Parse(atomPos[0]));
+                            MinY = Math.Min(MinY, float.Parse(atomPos[1]));
+                            MaxX = Math.Max(MaxX, float.Parse(atomPos[0]));
+                            MaxY = Math.Max(MaxY, float.Parse(atomPos[1]));
+                            float reactionWidth = MaxX - MinX;
+                            var width = Camera.main.orthographicSize * 2.0 * Screen.width / Screen.height;
+
+                            scaleFactor = (float)width / reactionWidth;
+
+
+                        }
+                        curReaction.transform.localScale = new Vector3(scaleFactor * 1.2f, scaleFactor * 1.2f, scaleFactor * 1.2f);
+                        String atomName = atomPos[3] + i.ToString().PadLeft(namecounter.ToString().Length, '0');
+                        Vector3 newPosition = Vector3.Lerp(Children[AtomNames[i]].localPosition, position, Time.deltaTime * speed);
+                        Children[AtomNames[i]].localPosition = newPosition;
+
+                    }
+                    foreach (String bond in bonds)
+                    {
+
+                        String[] connection = bond.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+
+
+                        String bondType = connection[2];
+                        String atom1 = AtomNames[int.Parse(connection[0])];
+                        String atom2 = AtomNames[int.Parse(connection[1])];
+                        Vector3 midpoint = (Children[atom1].position + Children[atom2].position) / 2f;
+
+                        switch (bondType)
+                        {
+
+                            case "0.5":
+                                ExpandObjects(halfBond, Children[atom1].position, Children[atom2].position, "repeat");
+                                break;
+                            case "1":
+                                try
+                                {
+                                    ExpandObjects(singleBond, Children[atom1].position, Children[atom2].position, "stretch");
+
+                                }
+                                catch (NullReferenceException e)
+                                {
+                                    Debug.LogError("Caught a null reference exception: " + e.Message);
+                                    // Handle the exception or recover from it
+                                }
+
+                                break;
+                            case "1.5":
+                                ExpandObjects(oneAndHalfBond, Children[atom1].position, Children[atom2].position, "stretch");
+                                break;
+                            case "2":
+                                ExpandObjects(doubleBond, Children[atom1].position, Children[atom2].position, "stretch");
+                                break;
+                            case "2.5":
+                                ExpandObjects(twoAndHalfBond, Children[atom1].position, Children[atom2].position, "repeat");
+                                break;
+                            case "3":
+                                ExpandObjects(tripleBond, Children[atom1].position, Children[atom2].position, "stretch");
+                                break;
+                            default:
+                                ExpandObjects(singleBond, Children[atom1].position, Children[atom2].position, "stretch");
+                                break;
+                        }
+
+                    }
+                    timer -= Time.deltaTime;
+
+                    if (timer <= 0f)
+                    {
+                        // Perform your calculation here
+                        // float result = CalcDihedral(...);
+
+                        timer = interval; // Reset the timer
+                    }
+
+                    //generate hightlighted lines
+                    if (hightLighted.Count > 0)
+                    {
+                        ShowElementAngleText();
+                        // Format each string and combine them
+                        string combinedString = "";
+                        foreach (string str in hightLighted)
+                        {
+                            string text = Regex.Replace(str, @"\d+", "");
+                            combinedString += $"Atom:       {text}\n";
+                        }
+                        elements_angle.text = combinedString;
+                        // Get the LineRenderer component from the instantiated object
+                        LineRenderer lineRenderer = LineInstance.GetComponent<LineRenderer>();
+
+                        // Set properties for the LineRenderer
+                        lineRenderer.positionCount = hightLighted.Count; // We're drawing a simple line, so we need 2 positions
+
+                        // Set the positions for the LineRenderer
+                        for (int i = 0; i < hightLighted.Count; i++)
+                        {
+                            Debug.Log(i);
+                            lineRenderer.SetPosition(i, Children[hightLighted[i]].position);
+                            lineRenderer.transform.SetParent(curBond.transform);
+                        }
+
+                        if (hightLighted.Count == 2)
+                        {
+                            float distance = (float)Math.Round(Vector3.Distance(Children[hightLighted[0]].position, Children[hightLighted[1]].position), 2);
+                            combinedString += $"Distance:       {distance}\n";
+                            elements_angle.text = combinedString;
+                        }
+                        if (hightLighted.Count == 3)
+                        {
+                            Vector3 side1 = Children[hightLighted[0]].position - Children[hightLighted[1]].position;
+                            Vector3 side2 = Children[hightLighted[2]].position - Children[hightLighted[1]].position;
+                            combinedString += $"Angle:       {(int)Math.Round(Vector3.Angle(side1, side2))}\n";
+                            elements_angle.text = combinedString;
+                        }
+                        if (hightLighted.Count == 4)
+                        {
+                            float dia_angle = CalcDihedral(Children[hightLighted[0]].position, Children[hightLighted[1]].position, Children[hightLighted[2]].position, Children[hightLighted[3]].position);
+                            combinedString += $"Diahedral Angle:       {(int)Math.Round(dia_angle)}\n";
+                            elements_angle.text = combinedString;
+                        }
+
+
+
+
+                    }
+                    namecounter = 1;
+                    //atoms = new List<String>();
+                    //bonds = new List<String>();
+                    //currentIndex = (currentIndex + 1) % readText.Count;
+                    frameIndex = (frameIndex + 1) % frames.Count;
+                    break;
+                }
+
+                if (framecounter == totalFrames)
+                {
+                    framecounter = 0;
+
+                }
+
+                // cylinders.Clear();
+
+
+                //update the progress with frameIndex/totalFrames as a integer
+                UpdateProgressBar(Mathf.FloorToInt((float)frameIndex / (float)totalFrames * 100));
             }
-
-            if (framecounter == totalFrames)
-            {
-                framecounter = 0;
-
-            }
-
-            // cylinders.Clear();
-
-
-
-
         }
+
+
+        
     }
 
     public void ExpandObjects(GameObject objectToExpand, Vector3 startPoint, Vector3 endPoint, string mode)
@@ -1084,6 +1120,30 @@ public class MainScreen : MonoBehaviour
         {
             FastBackward();
         });
+
+        frameSlider = rootElement.Q<Slider>("Slider");
+        // Set the slider range
+        frameSlider.lowValue = 0;
+        // Listen to value changes (when the user moves the slider)
+        frameSlider.RegisterValueChangedCallback(evt =>
+        {
+            int percentage = Mathf.FloorToInt(evt.newValue);
+            JumpToFrame(percentage);
+        });
+    }
+
+    void JumpToFrame(int percentage)
+    {
+        // Implement your logic to change the content to the specified frame
+        Debug.Log($"Jumping to frame: {frameIndex}");
+    }
+
+    void UpdateProgressBar(float progress)
+    {
+        if (frameSlider != null)
+        {
+            frameSlider.value = progress;
+        }
     }
 
     void UpdateIcon(bool isPaused)
@@ -1101,17 +1161,14 @@ public class MainScreen : MonoBehaviour
 
     public void FastForward()
     {
-        // Stop the loop when the button is clicked
-        currentIndex = (currentIndex + 3200) % readText.Count;
+        int skipAmount = Mathf.Max(1, frames.Count / 10); // Example: Skip 1/50th of the total frames
+        frameIndex = (frameIndex + skipAmount) % frames.Count;
     }
 
     public void FastBackward()
     {
-        // Stop the loop when the button is clicked
-
-        currentIndex = (currentIndex - 3200) % readText.Count;
-        if (currentIndex < 0) currentIndex += readText.Count;
-
+        int skipAmount = Mathf.Max(1, frames.Count / 10); // Ensure at least one frame is skipped
+        frameIndex = ((frameIndex - skipAmount) % frames.Count + frames.Count) % frames.Count;
     }
 
     public void SpeedUp2X()

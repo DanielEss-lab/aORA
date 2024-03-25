@@ -35,9 +35,22 @@
     display: none;
 }
 
-#unity-tracker {
+#container #unity-tracker {
     display: none;
 }
+
+#Slider #unity-tracker {
+    background-color: #387ADF; /* Light blue */
+        border-color: #FFFFFF; /* White border for contrast */
+    border-width: 2px;
+}
+
+#Slider #unity-dragger {
+	 background-color: #0000FF; /* Saturated blue, adjust based on your theme */
+    border-color: #FFFFFF; /* White border for contrast */
+    border-width: 2px;
+}
+
 
 #unity-dragger {
     background-color: lightgray;
@@ -89,7 +102,7 @@
 }
 
 #fastforward{
-    background-image: resource('Assets/Materials/icons/fast-forward-100.png');
+    background-image: resource('fast-forward-100.png');
     background-size: cover; /* Or use 100% 100% to fill the entire button */
 
     /* Set width and height as needed */
@@ -98,7 +111,7 @@
 }
 
 #fastbackward{
-    background-image: resource('Assets/Materials/icons/rewind-100.png');
+    background-image: resource('rewind-100.png');
     background-size: cover; /* Or use 100% 100% to fill the entire button */
 
     /* Set width and height as needed */
