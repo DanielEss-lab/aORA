@@ -141,7 +141,9 @@ public class MainScreen : MonoBehaviour
     private float zoomMax = 179.0f;
 
     private Slider frameSlider;
-
+    private VisualElement bottom;
+    private VisualElement top;
+    private VisualElement viewWindow;
 
     public bool IsExpanded
     {
@@ -195,7 +197,7 @@ public class MainScreen : MonoBehaviour
             // For example: contentContainer.Add(new Label("Content here"));
 
             // Add the container to the foldout
-            
+
             // Add two buttons to each foldout
             foreach (Reaction reaction in categories[category])
             {
@@ -210,7 +212,7 @@ public class MainScreen : MonoBehaviour
             foldout.RegisterValueChangedCallback(evt =>
             {
                 IsExpanded = allFoldouts.Any(f => f.value);
-  
+
             });
             allFoldouts.Add(foldout);
 
@@ -266,6 +268,9 @@ public class MainScreen : MonoBehaviour
         elements_angle = rootElement.Q<UnityEngine.UIElements.Label>("elements_angle");
         reaction_name = rootElement.Q<UnityEngine.UIElements.Label>("reaction_name");
         playPauseToggle = rootElement.Q<Toggle>("pauseButton");
+        bottom = rootElement.Q<VisualElement>("Bottom");
+        top = rootElement.Q<VisualElement>("Top");
+        viewWindow = rootElement.Q<VisualElement>("ViewWindow");
         ColorAllButtons();
         UpdateIcon(playPauseToggle.value);
         playPauseToggle.RegisterValueChangedCallback(evt =>
@@ -330,6 +335,7 @@ public class MainScreen : MonoBehaviour
     public void LoadFrameData(string filePath)
     {
         StartCoroutine(LoadFileFromStreamingAssets(filePath));
+
     }
 
     IEnumerator LoadFileFromStreamingAssets(string filePath)
@@ -372,6 +378,7 @@ public class MainScreen : MonoBehaviour
 
             Debug.Log($"Finished processing. Total frames: {frames.Count}");
             totalFrames = frames.Count;
+            isUI = false;
         }
     }
 
@@ -379,7 +386,7 @@ public class MainScreen : MonoBehaviour
     private void ButtonClicked(Reaction reaction)
     {
         Debug.Log($"Clicked Button {reaction.filename}");
-        isUI = false;
+
 
 
         //turn off the uiPage and turn on the reactionPage
@@ -415,9 +422,9 @@ public class MainScreen : MonoBehaviour
 
         Debug.Log("File before found: " + filePath);
 
-            readText = new List<string>();
+        readText = new List<string>();
         LoadFrameData(filePath);
-         
+
         isRead = true;
         //}
         foreach (Transform cld in curReaction.transform)
@@ -565,7 +572,7 @@ public class MainScreen : MonoBehaviour
             return false;
         }
         PointerEventData ped = new PointerEventData(EventSystem.current);
-        ped.position = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+        ped.position = Input.GetTouch(0).position;
         List<RaycastResult> results = new List<RaycastResult>();
         EventSystem.current.RaycastAll(ped, results);
         //return results.Count > 0;
@@ -574,8 +581,78 @@ public class MainScreen : MonoBehaviour
             //TODO: the topmost UI element is always the panelsettings of uitoolkit
             // Log the name of the topmost UI element hit by the raycast
             Debug.Log("Topmost UI element clicked: " + results[0].gameObject.name);
+            var panelHandler = results[0].gameObject.GetComponent<PanelEventHandler>();
+            if (panelHandler != null)
+            {
+                Vector2 localPoint;
+                IPanel panel = panelHandler.panel;
+                localPoint = RuntimePanelUtils.ScreenToPanel(panel, Input.mousePosition);
+                if (localPoint != null)
+                {
+                    Debug.Log("Local Point: " + localPoint + "Bottom : " + bottom.worldBound);
+                    Vector2 correctedPoint = new Vector2(localPoint.x, localPoint.y + bottom.worldBound.y);
+                    if (bottom.worldBound.Contains(correctedPoint))
+                    {
+                        Debug.Log("Bottom Clicked +: " + correctedPoint);
+                        return false;
+                    }
+                    VisualElement element = panel.Pick(localPoint);
+                    if (element != null)
+                    {
+                        Debug.Log("UI Toolkit Element under pointer: " + element.name);
+                    }
+                }
+            }
             return true;
         }
+        return false;
+    }
+
+    private bool IsTouchInsideViewWindow()
+    {
+       
+        if (EventSystem.current == null)
+        {
+            Debug.LogError("EventSystem.current is null");
+            return false;
+        }
+
+        if (Input.touchCount == 0)  // Efficiently handle no-touch scenarios
+        {
+            return false;
+        }
+
+        PointerEventData ped = new PointerEventData(EventSystem.current);
+        List<RaycastResult> results = new List<RaycastResult>();
+
+        for (int i = 0; i < Input.touchCount; i++)  // Loop through all available touches
+        {
+            Touch touch = Input.GetTouch(i);
+            ped.position = touch.position;
+            EventSystem.current.RaycastAll(ped, results);
+
+            foreach (RaycastResult result in results)
+            {
+                var panelHandler = result.gameObject.GetComponent<PanelEventHandler>();
+                if (panelHandler != null)
+                {
+                    IPanel panel = panelHandler.panel;
+                    Vector2 localPoint = RuntimePanelUtils.ScreenToPanel(panel, touch.position);
+
+                    if (localPoint != null)
+                    {
+                        Vector2 correctedPoint = new Vector2(localPoint.x, rootElement.worldBound.height - localPoint.y);
+                        if (viewWindow.worldBound.Contains(correctedPoint))
+                        {
+                            Debug.Log("Bottom Clicked +: " + correctedPoint);
+                            return true;
+                        }
+                    }
+                    
+                }
+            }
+        }
+
         return false;
     }
 
@@ -663,68 +740,71 @@ public class MainScreen : MonoBehaviour
             cam.fieldOfView = zoomMax;
         }
 
-
-
-        if (Input.touchCount == 2)
+        if (Input.touchCount > 0 && IsTouchInsideViewWindow())
         {
-            Touch touchZero = Input.GetTouch(0);
-            Touch touchOne = Input.GetTouch(1);
-            if (touchZero.phase == TouchPhase.Moved || touchOne.phase == TouchPhase.Moved)
+            if (Input.touchCount == 2)
             {
-                Vector2 touchZeroPrevPos = touchZero.position - touchZero.deltaPosition;
-                Vector2 touchOnePrePos = touchOne.position - touchOne.deltaPosition;
-                float preMagitude = Vector2.Distance(touchZeroPrevPos, touchOnePrePos);
-                float currentMagnitude = Vector2.Distance(touchZero.position, touchOne.position);
-                float difference = preMagitude - currentMagnitude;
+                Touch touchZero = Input.GetTouch(0);
+                Touch touchOne = Input.GetTouch(1);
 
-                if (Mathf.Abs(currentMagnitude) > 600.0f)
+                if (touchZero.phase == TouchPhase.Moved || touchOne.phase == TouchPhase.Moved)
                 {
-                    zoom(difference * 0.1f);
-                }
-                else
-                {
-                    Vector2 direction = (touchZeroPrevPos - touchZero.position);
-                    cam.transform.position += new Vector3(direction.x, direction.y, 0.0f) * 0.10f / cam.fieldOfView;
-                }
+                    Vector2 touchZeroPrevPos = touchZero.position - touchZero.deltaPosition;
+                    Vector2 touchOnePrePos = touchOne.position - touchOne.deltaPosition;
+                    float preMagitude = Vector2.Distance(touchZeroPrevPos, touchOnePrePos);
+                    float currentMagnitude = Vector2.Distance(touchZero.position, touchOne.position);
+                    float difference = preMagitude - currentMagnitude;
 
-            }
-
-
-
-        }
-        else if (Input.touchCount == 1)
-        {
-            foreach (Touch touch in Input.touches)
-            {
-
-                if (touch.phase == TouchPhase.Began)
-                {
-                    initTouch = touch;
-
-                    if (wholeReaction == GetClickedObject(touch.position))
+                    if (Mathf.Abs(currentMagnitude) > 600.0f)
                     {
-                        Debug.Log("clicked/touched!");
+                        zoom(difference * 0.1f);
+                    }
+                    else
+                    {
+                        Vector2 direction = (touchZeroPrevPos - touchZero.position);
+                        cam.transform.position += new Vector3(direction.x, direction.y, 0.0f) * 0.10f / cam.fieldOfView;
                     }
 
                 }
-                else if (touch.phase == TouchPhase.Moved)
-                {
-                    // Calculate rotation around the y-axis
-                    float rotationY = touch.deltaPosition.x * rotSpeed;
-                    // Calculate rotation around the x-axis
-                    float rotationX = -touch.deltaPosition.y * rotSpeed;
 
-                    //wholeReaction.transform.Rotate(touch.deltaPosition.y * rotSpeed, -touch.deltaPosition.x * rotSpeed, 0, Space.Self);
-                    wholeReaction.transform.Rotate(Vector3.up, rotationY, Space.Self);
-                    wholeReaction.transform.Rotate(Vector3.right, rotationX, Space.World);
 
-                }
-                else if (touch.phase == TouchPhase.Ended)
+
+            }
+            else if (Input.touchCount == 1)
+            {
+                foreach (Touch touch in Input.touches)
                 {
-                    initTouch = new Touch();
+
+                    if (touch.phase == TouchPhase.Began)
+                    {
+                        initTouch = touch;
+
+                        if (wholeReaction == GetClickedObject(touch.position))
+                        {
+                            Debug.Log("clicked/touched!");
+                        }
+
+                    }
+                    else if (touch.phase == TouchPhase.Moved)
+                    {
+                        // Calculate rotation around the y-axis
+                        float rotationY = touch.deltaPosition.x * rotSpeed;
+                        // Calculate rotation around the x-axis
+                        float rotationX = -touch.deltaPosition.y * rotSpeed;
+
+                        //wholeReaction.transform.Rotate(touch.deltaPosition.y * rotSpeed, -touch.deltaPosition.x * rotSpeed, 0, Space.Self);
+                        wholeReaction.transform.Rotate(Vector3.up, rotationY, Space.Self);
+                        wholeReaction.transform.Rotate(Vector3.right, rotationX, Space.World);
+
+                    }
+                    else if (touch.phase == TouchPhase.Ended)
+                    {
+                        initTouch = new Touch();
+                    }
                 }
             }
         }
+
 
 
 
@@ -807,8 +887,16 @@ public class MainScreen : MonoBehaviour
                         }
                         curReaction.transform.localScale = new Vector3(scaleFactor * 1.2f, scaleFactor * 1.2f, scaleFactor * 1.2f);
                         String atomName = atomPos[3] + i.ToString().PadLeft(namecounter.ToString().Length, '0');
-                        Vector3 newPosition = Vector3.Lerp(Children[AtomNames[i]].localPosition, position, Time.deltaTime * speed);
-                        Children[AtomNames[i]].localPosition = newPosition;
+                        if (frameIndex == 0)
+                        {
+                            Children[AtomNames[i]].localPosition = position;
+                        }
+                        else
+                        {
+                            Vector3 newPosition = Vector3.Lerp(Children[AtomNames[i]].localPosition, position, Time.deltaTime * speed);
+                            Children[AtomNames[i]].localPosition = newPosition;
+                        }
+
 
                     }
                     foreach (String bond in bonds)
@@ -943,7 +1031,7 @@ public class MainScreen : MonoBehaviour
         }
 
 
-        
+
     }
 
     public void ExpandObjects(GameObject objectToExpand, Vector3 startPoint, Vector3 endPoint, string mode)
@@ -1087,7 +1175,7 @@ public class MainScreen : MonoBehaviour
     void JumpToFrame(int percentage)
     {
         // Implement your logic to change the content to the specified frame
-        Debug.Log($"Jumping to frame: {frameIndex}");
+        //Debug.Log($"Jumping to frame: {frameIndex}");
     }
 
     void UpdateProgressBar(float progress)
