@@ -398,15 +398,18 @@ public class MainScreen : MonoBehaviour
         currentIndex = 0;
         framecounter = 0;
         frameIndex = 0;
-        curReaction = InstantiatePrefabByName(reaction.filename);
+
         reaction_name.text = reaction.reactionName;
         reaction_name.visible = true;
         wholeReaction = new GameObject();
         wholeReaction.name = "wholeReaction";
+        //set the whole reaction's position to the fixed position
+        wholeReaction.transform.position = fixedPostion;
+        curReaction = InstantiatePrefabByName(reaction.filename, wholeReaction);
         curBond = new GameObject();
         curBond.name = "Bonds";
         curBond.transform.SetParent(wholeReaction.transform);
-        curReaction.transform.SetParent(wholeReaction.transform);
+
         hightLighted = new List<string>();
         LineInstance = Instantiate(Line, Vector3.zero, Quaternion.identity);
         LineInstance.transform.SetParent(wholeReaction.transform);
@@ -439,16 +442,15 @@ public class MainScreen : MonoBehaviour
         }
     }
 
-    GameObject InstantiatePrefabByName(string prefabName)
+    GameObject InstantiatePrefabByName(string prefabName, GameObject wholeReaction)
     {
         GameObject prefab = Resources.Load<GameObject>(prefabName);
 
         if (prefab != null)
         {
-            //GameObject instantiatedPrefab = Instantiate(prefab, transform.position, Quaternion.identity, transform);
-            GameObject instantiatedPrefab = Instantiate(prefab, fixedPostion, transform.rotation);
-            // Optionally, set the instantiated prefab as a child of another GameObject
-            // instantiatedPrefab.transform.SetParent(someParentTransform);
+
+            GameObject instantiatedPrefab = Instantiate(prefab, Vector3.zero, transform.rotation, wholeReaction.transform);
+            instantiatedPrefab.transform.localPosition = Vector3.zero;
 
             return instantiatedPrefab;
         }
@@ -793,7 +795,7 @@ public class MainScreen : MonoBehaviour
                         float rotationX = -touch.deltaPosition.y * rotSpeed;
 
                         //wholeReaction.transform.Rotate(touch.deltaPosition.y * rotSpeed, -touch.deltaPosition.x * rotSpeed, 0, Space.Self);
-                        wholeReaction.transform.Rotate(Vector3.up, rotationY, Space.Self);
+                        wholeReaction.transform.Rotate(Vector3.up, rotationY, Space.World);
                         wholeReaction.transform.Rotate(Vector3.right, rotationX, Space.World);
 
                     }
