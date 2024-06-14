@@ -17,6 +17,7 @@ using System.Text.RegularExpressions;
 using TMPro;
 using static UnityEngine.ParticleSystem;
 using Slider = UnityEngine.UIElements.Slider;
+using UnityEngine.XR;
 
 [System.Serializable]
 public class Reaction
@@ -25,6 +26,7 @@ public class Reaction
     public string reactionName;
     public string filename;
     public int transitionState;
+    public string description;
 }
 
 
@@ -60,11 +62,14 @@ public class MainScreen : MonoBehaviour
     private bool _isExpanded;
     private Toggle toggleButton;
     private Button backButton;
+    private Button backButton2;
     private Toggle playPauseToggle;
     private Button fastForwardButton;
     private Button fastBackwardButton;
     public Sprite playIcon;
     public Sprite pauseIcon;
+    private Button TSButton;
+ 
 
 
     //Reaction stuff
@@ -75,7 +80,7 @@ public class MainScreen : MonoBehaviour
     private Dictionary<int, String> AtomNames = new Dictionary<int, String>();
 
     private String pattern = @"^(\s+-?\d+\.?\d+){3}\s+\w{1,2}";
-    private String bondpattern = @"^(\s*([0-9]*\.[0-9]+|[0-9]+)\s*){3}$";
+    private String bondpattern = @"^\s*\d+\s+\d+\s+(\d+|[0-9]*\.[0-9]+)(\s+\d+)*\s*$";
     private String endPattern = @"M  END";
     private String namePattern = @"([a-zA-Z]+)(\d+)";
 
@@ -91,7 +96,7 @@ public class MainScreen : MonoBehaviour
     public GameObject LineInstance;
     Vector3 fixedPostion = new Vector3(0, 2, 0);
     private int framecounter = 0;
-    private int currentPanelIndex;
+    private int currentPanelIndex = 0;
     private int currentIndex = 0;
     private int frameIndex = 0;
 
@@ -101,7 +106,7 @@ public class MainScreen : MonoBehaviour
     private bool isRead = false;
 
     private List<GameObject> instantiatedObjects = new List<GameObject>();
-    private bool isLooping = true;
+    private bool isPlaying = true;
     private bool isUI = true;
 
 
@@ -145,6 +150,10 @@ public class MainScreen : MonoBehaviour
     private VisualElement top;
     private VisualElement viewWindow;
 
+    private bool isLoading = false;
+    // Flag to indicate if the slider is being updated programmatically
+    private bool isUpdatingFromCode = false;
+
     public bool IsExpanded
     {
         get { return _isExpanded; }
@@ -161,7 +170,7 @@ public class MainScreen : MonoBehaviour
 
     private void CreateCategories()
     {
-
+       
         string path = Path.Combine(UnityEngine.Application.streamingAssetsPath, "reactions.json");
         var loadingRequest = UnityWebRequest.Get(path);
         loadingRequest.SendWebRequest();
@@ -174,6 +183,7 @@ public class MainScreen : MonoBehaviour
 
         foreach (Reaction reaction in reactionsList.reactions)
         {
+            Debug.Log(reaction.reactionName + " " + reaction.transitionState);                    
             if (categories.ContainsKey(reaction.category))
             {
                 categories[reaction.category].Add(reaction);
@@ -198,7 +208,7 @@ public class MainScreen : MonoBehaviour
 
             // Add the container to the foldout
 
-            // Add two buttons to each foldout
+            // Add two buttons to each foldout 
             foreach (Reaction reaction in categories[category])
             {
                 var button = new Button(() => ButtonClicked(reaction))
@@ -271,46 +281,94 @@ public class MainScreen : MonoBehaviour
         bottom = rootElement.Q<VisualElement>("Bottom");
         top = rootElement.Q<VisualElement>("Top");
         viewWindow = rootElement.Q<VisualElement>("ViewWindow");
+
         ColorAllButtons();
         UpdateIcon(playPauseToggle.value);
         playPauseToggle.RegisterValueChangedCallback(evt =>
         {
-            StopLoop();
+            Pause();
             UpdateIcon(evt.newValue);
         });
+       
+        TSButton = rootElement.Q<Button>("TSButton");
 
-        // Access the DropdownField by name
-        var speedControl = rootElement.Q<DropdownField>("speedControl");
+        var speedButton = rootElement.Q<Button>("SpeedButton");
+        speedButton.text = "1X";  // Set initial button text to "1X"
 
-        // Populate the choices
-        speedControl.choices = new List<string> { "0.5X", "1X", "2X" };
+        // Current speed settings
+        List<string> speeds = new List<string> { "0.5X", "1X", "2X", "3X", "4X", "5X", "10X" };
+        int currentIndex = 1;  // Start at "1X", which corresponds to speeds[1]
 
-        // Optionally set the default selected index
-        speedControl.index = 1; // This selects "1X" by default
-
-        // Register a value changed event listener
-        speedControl.RegisterValueChangedCallback(evt =>
+        speedButton.clicked += () =>
         {
-            // Convert the selected string to a float and update the speed variable
-            string selectedOption = evt.newValue;
-            switch (selectedOption)
+            // Move to the next item in the list cyclically
+            currentIndex = (currentIndex + 1) % speeds.Count;
+            speedButton.text = speeds[currentIndex];
+
+            // Update the playback rate based on selected speed
+            switch (speeds[currentIndex])
             {
                 case "0.5X":
-                    playbackRate = 30f;
+                    playbackRate = 10f;
                     break;
                 case "1X":
-                    playbackRate = 80f;
+                    playbackRate = 20f;
                     break;
                 case "2X":
+                    playbackRate = 40f;
+                    break;
+                case "3X":
+                    playbackRate = 100f;
+                    break;
+                case "4X":
+                    playbackRate = 150f;
+                    break;
+                case "5X":
                     playbackRate = 200f;
                     break;
+                case "10x":
+                    playbackRate = 400f;
+                    break;
                 default:
-                    playbackRate = 50f; // Default speed if none of the options match
+                    playbackRate = 50f;  // Default to 1X speed if none of the options match
                     break;
             }
 
-            Debug.Log($"Updated Speed: {speed}");
-        });
+            Debug.Log($"Updated Speed: {playbackRate}");
+        };
+
+        //// Access the DropdownField by name
+        //var speedControl = rootElement.Q<DropdownField>("speedControl");
+
+        //// Populate the choices
+        //speedControl.choices = new List<string> { "0.5X", "1X", "2X" };
+
+        //// Optionally set the default selected index
+        //speedControl.index = 1; // This selects "1X" by default
+
+        //// Register a value changed event listener
+        //speedControl.RegisterValueChangedCallback(evt =>
+        //{
+        //    // Convert the selected string to a float and update the speed variable
+        //    string selectedOption = evt.newValue;
+        //    switch (selectedOption)
+        //    {
+        //        case "0.5X":
+        //            playbackRate = 30f;
+        //            break;
+        //        case "1X":
+        //            playbackRate = 80f;
+        //            break;
+        //        case "2X":
+        //            playbackRate = 200f;
+        //            break;
+        //        default:
+        //            playbackRate = 50f; // Default speed if none of the options match
+        //            break;
+        //    }
+
+        //    Debug.Log($"Updated Speed: {speed}");
+        //});
         container = rootElement.Q<ScrollView>("container");
         isInertiaActive = false;
 
@@ -326,6 +384,7 @@ public class MainScreen : MonoBehaviour
         container = rootElement.Q<ScrollView>("container");
 
         CreateCategories();
+        currentPanelIndex = 0;
     }
 
     //New Frame Approach
@@ -340,7 +399,7 @@ public class MainScreen : MonoBehaviour
 
     IEnumerator LoadFileFromStreamingAssets(string filePath)
     {
-
+        isLoading = true;
 
         Debug.Log("File before unitywebrequest: " + filePath);
 
@@ -378,8 +437,21 @@ public class MainScreen : MonoBehaviour
 
             Debug.Log($"Finished processing. Total frames: {frames.Count}");
             totalFrames = frames.Count;
-            isUI = false;
+            foreach (Transform cld in curReaction.transform)
+            {
+
+                // Debug.Log(cld.name);
+                Children.Add(cld.name, cld);
+                cld.gameObject.AddComponent<BoxCollider>();
+                Match match = Regex.Match(cld.name, namePattern);
+                AtomNames.Add(int.Parse(match.Groups[2].Value), cld.name);
+
+            }
+
         }
+
+
+        isLoading = false;
     }
 
 
@@ -388,7 +460,7 @@ public class MainScreen : MonoBehaviour
         Debug.Log($"Clicked Button {reaction.filename}");
 
 
-
+        currentPanelIndex = 2;
         //turn off the uiPage and turn on the reactionPage
         uiPage.visible = false;
         reactionPage.visible = true;
@@ -398,9 +470,10 @@ public class MainScreen : MonoBehaviour
         currentIndex = 0;
         framecounter = 0;
         frameIndex = 0;
+        playbackRate = 50.0f;
 
         reaction_name.text = reaction.reactionName;
-        reaction_name.visible = true;
+        //reaction_name.visible = true;
         wholeReaction = new GameObject();
         wholeReaction.name = "wholeReaction";
         //set the whole reaction's position to the fixed position
@@ -410,15 +483,35 @@ public class MainScreen : MonoBehaviour
         curBond.name = "Bonds";
         curBond.transform.SetParent(wholeReaction.transform);
 
+        if(TSButton != null)
+        {
+            if(reaction.transitionState > 0)
+            {
+                //change the color of the text in the button to be blue
+                
+
+                TSButton.style.color = Color.blue;
+                TSButton.clicked += () =>
+                {
+                    JumpToTS(reaction.transitionState);
+                };
+            }
+            else
+            {
+                TSButton.style.color = Color.gray;
+            }
+
+
+        }
+
         hightLighted = new List<string>();
         LineInstance = Instantiate(Line, Vector3.zero, Quaternion.identity);
-        LineInstance.transform.SetParent(wholeReaction.transform);
+        LineInstance.transform.SetParent(wholeReaction.transform, false);
         LineRenderer lineRenderer = LineInstance.GetComponent<LineRenderer>();
 
         // Set properties for the LineRenderer
         lineRenderer.positionCount = 1;
 
-        Debug.Log("Button clicked: " + reaction.filename);
         string filePath = Path.Combine(Application.streamingAssetsPath, reaction.filename);
         //filePath = filePath.Replace("/", "\\");
         filePath = filePath + ".sdf";
@@ -430,16 +523,8 @@ public class MainScreen : MonoBehaviour
 
         isRead = true;
         //}
-        foreach (Transform cld in curReaction.transform)
-        {
 
-            // Debug.Log(cld.name);
-            Children.Add(cld.name, cld);
-            cld.gameObject.AddComponent<BoxCollider>();
-            Match match = Regex.Match(cld.name, namePattern);
-            AtomNames.Add(int.Parse(match.Groups[2].Value), cld.name);
-
-        }
+        isUI = false;
     }
 
     GameObject InstantiatePrefabByName(string prefabName, GameObject wholeReaction)
@@ -504,11 +589,22 @@ public class MainScreen : MonoBehaviour
         {
             //secondCanvas.gameObject.SetActive(!secondCanvas.gameObject.activeSelf);
             //parentCanvas.gameObject.SetActive(!parentCanvas.gameObject.activeSelf);
-            panelsInfo.RemoveAt(1);
+            //panelsInfo.RemoveAt(1);
+            uiPage.visible = true;
+            reactionPage.visible = false;
             Destroy(curReaction);
             Destroy(wholeReaction);
             Destroy(LineInstance);
+            Children = new Dictionary<string, Transform>();
+            AtomNames = new Dictionary<int, String>();
+            frames = new List<Frame>();
+            elements_angle.text = "";
             isUI = true;
+            currentPanelIndex = 0;
+            frameIndex = 0;
+            isPlaying = true;
+
+
             //TODO: show previous panel
             //oncategorybuttonclick(panelsinfo[0]);
         }
@@ -520,14 +616,19 @@ public class MainScreen : MonoBehaviour
         }
 
     }
+
+
     private float scaleFactor;
-    GameObject GetClickedObject(Vector2 pos)
+    void GetClickedObject(Vector2 pos)
     {
-        GameObject target = null;
+        Vector2 touchPos = Input.GetTouch(0).position; 
+        Debug.Log("GetClickedObject : " + touchPos);
         var ray = cam.ScreenPointToRay(pos);
+        Debug.DrawRay(ray.origin, ray.direction * 100, Color.red, 2.0f);
         RaycastHit hit;
         if (Physics.Raycast(ray, out hit))
         {
+            Debug.Log("Hit Object: " + hit.collider.gameObject.name);
             foreach (KeyValuePair<string, Transform> entry in Children)
             {
                 if (hit.transform == entry.Value)
@@ -537,7 +638,9 @@ public class MainScreen : MonoBehaviour
                     Material mat = objRenderer.material; // Get a reference to the material
                     if (hightLighted.Contains(entry.Key))
                     {
-                        mat.DisableKeyword("_EMISSION");
+                        Color highlightedColor = mat.GetColor("_Color");
+                        Color originalColor = highlightedColor / 2.0f;
+                        mat.SetColor("_Color", originalColor);
                         hightLighted.Remove(entry.Key);
 
 
@@ -545,8 +648,10 @@ public class MainScreen : MonoBehaviour
                     else
                     {
                         Color originalColor = mat.GetColor("_Color");
-                        mat.EnableKeyword("_EMISSION"); // Enable emission keyword
-                        mat.SetColor("_EmissionColor", originalColor); // Set the emission color
+                        Color highlightedColor = originalColor * 2.0f; // Increase brightness
+                        mat.SetColor("_Color", highlightedColor); // Set the material color
+                        //mat.EnableKeyword("_EMISSION"); // Enable emission keyword
+                        //mat.SetColor("_EmissionColor", originalColor); // Set the emission color
                         hightLighted.Add(entry.Key);
 
                     }
@@ -555,14 +660,11 @@ public class MainScreen : MonoBehaviour
             }
 
             //TODO: determine if this code should be deleted since the target is not being used
-            if (!isPointerOverUIObject()) { target = hit.collider.gameObject; }
+            //if (!isPointerOverUIObject()) { target = hit.collider.gameObject; }
         }
 
-        if (target == null)
-        {
-            Debug.Log("Null Target!");
-        }
-        return target;
+
+
     }
 
     private bool isPointerOverUIObject()
@@ -646,7 +748,6 @@ public class MainScreen : MonoBehaviour
                         Vector2 correctedPoint = new Vector2(localPoint.x, rootElement.worldBound.height - localPoint.y);
                         if (viewWindow.worldBound.Contains(correctedPoint))
                         {
-                            Debug.Log("Bottom Clicked +: " + correctedPoint);
                             return true;
                         }
                     }
@@ -681,23 +782,68 @@ public class MainScreen : MonoBehaviour
         return dihed4;
     }
 
+    private void drawHighlightedLines()
+    {         //generate hightlighted lines
+        if (hightLighted.Count > 0)
+        {
+            //ShowElementAngleText();
+            // Format each string and combine them
+            string combinedString = "";
+            foreach (string str in hightLighted)
+            {
+                string text = Regex.Replace(str, @"\d+", "");
+                combinedString += $"Atom:       {text}\n";
+            }
+            elements_angle.text = combinedString;
+            // Get the LineRenderer component from the instantiated object
+            LineRenderer lineRenderer = LineInstance.GetComponent<LineRenderer>();
+            lineRenderer.useWorldSpace = false;
+
+            // Set properties for the LineRenderer
+            lineRenderer.positionCount = hightLighted.Count; // We're drawing a simple line, so we need 2 positions
+
+            // Set the positions for the LineRenderer
+            for (int i = 0; i < hightLighted.Count; i++)
+            {
+                Vector3 localPosition = wholeReaction.transform.InverseTransformPoint(Children[hightLighted[i]].position);
+                lineRenderer.SetPosition(i, localPosition);
+                //lineRenderer.SetPosition(i, Children[hightLighted[i]].position);
+                //lineRenderer.transform.SetParent(curBond.transform);
+            }
+
+            if (hightLighted.Count == 2)
+            {
+                float distance = (float)Math.Round(Vector3.Distance(Children[hightLighted[0]].position, Children[hightLighted[1]].position), 2);
+                combinedString += $"Distance:       {distance}\n";
+                elements_angle.text = combinedString;
+            }
+            if (hightLighted.Count == 3)
+            {
+                Vector3 side1 = Children[hightLighted[0]].position - Children[hightLighted[1]].position;
+                Vector3 side2 = Children[hightLighted[2]].position - Children[hightLighted[1]].position;
+                combinedString += $"Angle:       {(int)Math.Round(Vector3.Angle(side1, side2))}\n";
+                elements_angle.text = combinedString;
+            }
+            if (hightLighted.Count == 4)
+            {
+                float dia_angle = CalcDihedral(Children[hightLighted[0]].position, Children[hightLighted[1]].position, Children[hightLighted[2]].position, Children[hightLighted[3]].position);
+                combinedString += $"Diahedral Angle:       {(int)Math.Round(dia_angle)}\n";
+                elements_angle.text = combinedString;
+            }
+
+        }
+        else
+        {
+            elements_angle.text = "";
+        }
+    }
+
     private void SetButtonText(GameObject button, string text)
     {
         TMP_Text buttonText = button.GetComponentInChildren<TMP_Text>();
         buttonText.text = text;
     }
 
-    // Call this method to hide the text
-    public void HideElementAngleText()
-    {
-        elements_angle.visible = false;
-    }
-
-    // Call this method to show the text
-    public void ShowElementAngleText()
-    {
-        elements_angle.visible = true;
-    }
 
     private float playbackRate = 50.0f; // Frames per second
     private float timeSinceLastFrameChange = 0.0f;
@@ -726,13 +872,11 @@ public class MainScreen : MonoBehaviour
                 StopInertia();
         }
 
-
-        if (isUI) return;
-
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             OnClickBackButton();
         }
+
         if (cam.fieldOfView < zoomMin)
         {
             cam.fieldOfView = zoomMin;
@@ -741,6 +885,15 @@ public class MainScreen : MonoBehaviour
         {
             cam.fieldOfView = zoomMax;
         }
+
+
+        if (isUI || isLoading){
+            Debug.Log("UI is active");
+            return;
+        }
+
+
+
 
         if (Input.touchCount > 0 && IsTouchInsideViewWindow())
         {
@@ -780,11 +933,7 @@ public class MainScreen : MonoBehaviour
                     if (touch.phase == TouchPhase.Began)
                     {
                         initTouch = touch;
-
-                        if (wholeReaction == GetClickedObject(touch.position))
-                        {
-                            Debug.Log("clicked/touched!");
-                        }
+                        GetClickedObject(touch.position);
 
                     }
                     else if (touch.phase == TouchPhase.Moved)
@@ -807,13 +956,6 @@ public class MainScreen : MonoBehaviour
             }
         }
 
-
-
-
-        List<String> atoms = new List<String>();
-        List<String> atomNameIndex = new List<String>();
-        List<String> bonds = new List<String>();
-
         float frameInterval = 1.0f / playbackRate;
 
         // Accumulate elapsed time
@@ -823,7 +965,7 @@ public class MainScreen : MonoBehaviour
         int framesToAdvance = Mathf.FloorToInt(timeSinceLastFrameChange / frameInterval);
 
         // Check if it's time to advance to the next frame based on the playback rate
-        if (framesToAdvance > 0)
+        if (framesToAdvance > 0 && isPlaying)
         {
             // Reset the accumulator
             timeSinceLastFrameChange -= framesToAdvance * frameInterval; // Use subtraction to maintain accuracy over time
@@ -832,208 +974,167 @@ public class MainScreen : MonoBehaviour
             frameIndex = (frameIndex + framesToAdvance) % frames.Count;
 
             // Render the current frame
-            GameObject cylinder;
-            namecounter = 1;
-            currentIndex = 0;
-            while (isLooping && isRead && currentIndex < frames[frameIndex].lines.Count)
-            {
-
-                DestroyObjects();
-                //string s = readText[currentIndex];
-                //currentIndex = (currentIndex + 1) % readText.Count;
-                string s = frames[frameIndex].lines[currentIndex];
-                currentIndex = (currentIndex + 1);
-                Match match = Regex.Match(s, pattern);
-                if (match.Success)
-                {
-
-                    // Debug.Log(match.Value.Substring(match.Value.Length - 1) + namecounter );
-                    atoms.Add(match.Value);
-                    atomNameIndex.Add(match.Value.Substring(match.Value.Length - 1));
-                    namecounter += 1;
-
-                }
-
-                match = Regex.Match(s, bondpattern);
-                if (match.Success)
-                {
-                    bonds.Add(match.Value);
-                }
-
-
-                match = Regex.Match(s, endPattern);
-                if (match.Success)
-                {
-                    framecounter += 1;
-                    // Debug.Log("frame counter: " + framecounter);
-                    for (int i = 1; i < namecounter; i++)
-                    {
-                        String line = atoms[i - 1];
-                        String[] atomPos = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                        Vector3 position = new Vector3(float.Parse(atomPos[0]), float.Parse(atomPos[1]), float.Parse(atomPos[2]));
-
-
-                        if (framecounter == 1)
-                        {
-
-                            MinX = Math.Min(MinX, float.Parse(atomPos[0]));
-                            MinY = Math.Min(MinY, float.Parse(atomPos[1]));
-                            MaxX = Math.Max(MaxX, float.Parse(atomPos[0]));
-                            MaxY = Math.Max(MaxY, float.Parse(atomPos[1]));
-                            float reactionWidth = MaxX - MinX;
-                            var width = Camera.main.orthographicSize * 2.0 * Screen.width / Screen.height;
-
-                            scaleFactor = (float)width / reactionWidth;
-
-
-                        }
-                        curReaction.transform.localScale = new Vector3(scaleFactor * 1.2f, scaleFactor * 1.2f, scaleFactor * 1.2f);
-                        String atomName = atomPos[3] + i.ToString().PadLeft(namecounter.ToString().Length, '0');
-                        if (frameIndex == 0)
-                        {
-                            Children[AtomNames[i]].localPosition = position;
-                        }
-                        else
-                        {
-                            Vector3 newPosition = Vector3.Lerp(Children[AtomNames[i]].localPosition, position, Time.deltaTime * speed);
-                            Children[AtomNames[i]].localPosition = newPosition;
-                        }
-
-
-                    }
-                    foreach (String bond in bonds)
-                    {
-
-                        String[] connection = bond.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-
-
-
-                        String bondType = connection[2];
-                        String atom1 = AtomNames[int.Parse(connection[0])];
-                        String atom2 = AtomNames[int.Parse(connection[1])];
-                        Vector3 midpoint = (Children[atom1].position + Children[atom2].position) / 2f;
-
-                        switch (bondType)
-                        {
-
-                            case "0.5":
-                                ExpandObjects(halfBond, Children[atom1].position, Children[atom2].position, "repeat");
-                                break;
-                            case "1":
-                                try
-                                {
-                                    ExpandObjects(singleBond, Children[atom1].position, Children[atom2].position, "stretch");
-
-                                }
-                                catch (NullReferenceException e)
-                                {
-                                    Debug.LogError("Caught a null reference exception: " + e.Message);
-                                    // Handle the exception or recover from it
-                                }
-
-                                break;
-                            case "1.5":
-                                ExpandObjects(oneAndHalfBond, Children[atom1].position, Children[atom2].position, "stretch");
-                                break;
-                            case "2":
-                                ExpandObjects(doubleBond, Children[atom1].position, Children[atom2].position, "stretch");
-                                break;
-                            case "2.5":
-                                ExpandObjects(twoAndHalfBond, Children[atom1].position, Children[atom2].position, "repeat");
-                                break;
-                            case "3":
-                                ExpandObjects(tripleBond, Children[atom1].position, Children[atom2].position, "stretch");
-                                break;
-                            default:
-                                ExpandObjects(singleBond, Children[atom1].position, Children[atom2].position, "stretch");
-                                break;
-                        }
-
-                    }
-                    timer -= Time.deltaTime;
-
-                    if (timer <= 0f)
-                    {
-                        // Perform your calculation here
-                        // float result = CalcDihedral(...);
-
-                        timer = interval; // Reset the timer
-                    }
-
-                    //generate hightlighted lines
-                    if (hightLighted.Count > 0)
-                    {
-                        ShowElementAngleText();
-                        // Format each string and combine them
-                        string combinedString = "";
-                        foreach (string str in hightLighted)
-                        {
-                            string text = Regex.Replace(str, @"\d+", "");
-                            combinedString += $"Atom:       {text}\n";
-                        }
-                        elements_angle.text = combinedString;
-                        // Get the LineRenderer component from the instantiated object
-                        LineRenderer lineRenderer = LineInstance.GetComponent<LineRenderer>();
-
-                        // Set properties for the LineRenderer
-                        lineRenderer.positionCount = hightLighted.Count; // We're drawing a simple line, so we need 2 positions
-
-                        // Set the positions for the LineRenderer
-                        for (int i = 0; i < hightLighted.Count; i++)
-                        {
-                            Debug.Log(i);
-                            lineRenderer.SetPosition(i, Children[hightLighted[i]].position);
-                            lineRenderer.transform.SetParent(curBond.transform);
-                        }
-
-                        if (hightLighted.Count == 2)
-                        {
-                            float distance = (float)Math.Round(Vector3.Distance(Children[hightLighted[0]].position, Children[hightLighted[1]].position), 2);
-                            combinedString += $"Distance:       {distance}\n";
-                            elements_angle.text = combinedString;
-                        }
-                        if (hightLighted.Count == 3)
-                        {
-                            Vector3 side1 = Children[hightLighted[0]].position - Children[hightLighted[1]].position;
-                            Vector3 side2 = Children[hightLighted[2]].position - Children[hightLighted[1]].position;
-                            combinedString += $"Angle:       {(int)Math.Round(Vector3.Angle(side1, side2))}\n";
-                            elements_angle.text = combinedString;
-                        }
-                        if (hightLighted.Count == 4)
-                        {
-                            float dia_angle = CalcDihedral(Children[hightLighted[0]].position, Children[hightLighted[1]].position, Children[hightLighted[2]].position, Children[hightLighted[3]].position);
-                            combinedString += $"Diahedral Angle:       {(int)Math.Round(dia_angle)}\n";
-                            elements_angle.text = combinedString;
-                        }
-
-
-
-
-                    }
-                    namecounter = 1;
-                    //atoms = new List<String>();
-                    //bonds = new List<String>();
-                    //currentIndex = (currentIndex + 1) % readText.Count;
-                    frameIndex = (frameIndex + 1) % frames.Count;
-                    break;
-                }
-
-                if (framecounter == totalFrames)
-                {
-                    framecounter = 0;
-
-                }
-
-                // cylinders.Clear();
-
-
-                //update the progress with frameIndex/totalFrames as a integer
-                UpdateProgressBar(Mathf.FloorToInt((float)frameIndex / (float)totalFrames * 100));
-            }
+            RenderFrame();
         }
 
+        drawHighlightedLines();
+
+    }
+
+    private void RenderFrame() {
+        List<String> atoms = new List<String>();
+        List<String> atomNameIndex = new List<String>();
+        List<String> bonds = new List<String>();
+        namecounter = 1;
+        currentIndex = 0;
+        while (isRead && currentIndex < frames[frameIndex].lines.Count)
+        {
+
+            DestroyObjects();
+            //string s = readText[currentIndex];
+            //currentIndex = (currentIndex + 1) % readText.Count;
+            string s = frames[frameIndex].lines[currentIndex];
+            currentIndex = (currentIndex + 1);
+            Match match = Regex.Match(s, pattern);
+            if (match.Success)
+            {
+
+                // Debug.Log(match.Value.Substring(match.Value.Length - 1) + namecounter );
+                atoms.Add(match.Value);
+                atomNameIndex.Add(match.Value.Substring(match.Value.Length - 1));
+                namecounter += 1;
+
+            }
+
+            match = Regex.Match(s, bondpattern);
+            if (match.Success)
+            {
+                bonds.Add(match.Value);
+            }
 
 
+            match = Regex.Match(s, endPattern);
+            if (match.Success)
+            {
+                framecounter += 1;
+                // Debug.Log("frame counter: " + framecounter);
+                for (int i = 1; i < namecounter; i++)
+                {
+                    String line = atoms[i - 1];
+                    String[] atomPos = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    Vector3 position = new Vector3(float.Parse(atomPos[0]), float.Parse(atomPos[1]), float.Parse(atomPos[2]));
+
+
+                    if (framecounter == 1)
+                    {
+
+                        MinX = Math.Min(MinX, float.Parse(atomPos[0]));
+                        MinY = Math.Min(MinY, float.Parse(atomPos[1]));
+                        MaxX = Math.Max(MaxX, float.Parse(atomPos[0]));
+                        MaxY = Math.Max(MaxY, float.Parse(atomPos[1]));
+                        float reactionWidth = MaxX - MinX;
+                        var width = Camera.main.orthographicSize * 2.0 * Screen.width / Screen.height;
+
+                        scaleFactor = (float)width / reactionWidth;
+
+
+                    }
+                    curReaction.transform.localScale = new Vector3(scaleFactor * 1.2f, scaleFactor * 1.2f, scaleFactor * 1.2f);
+                    String atomName = atomPos[3] + i.ToString().PadLeft(namecounter.ToString().Length, '0');
+                    if (frameIndex == 0)
+                    {
+                        String atom = AtomNames[i];
+                        Children[atom].localPosition = position;
+                    }
+                    else
+                    {
+                        String atom = AtomNames[i];
+                        Vector3 newPosition = Vector3.Lerp(Children[atom].localPosition, position, Time.deltaTime * speed);
+                        Children[AtomNames[i]].localPosition = newPosition;
+                    }
+
+
+                }
+                foreach (String bond in bonds)
+                {
+
+                    String[] connection = bond.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+
+
+                    String bondType = connection[2];
+                    String atom1 = AtomNames[int.Parse(connection[0])];
+                    String atom2 = AtomNames[int.Parse(connection[1])];
+                    Vector3 midpoint = (Children[atom1].position + Children[atom2].position) / 2f;
+
+                    switch (bondType)
+                    {
+
+                        case "0.5":
+                            ExpandObjects(halfBond, Children[atom1].position, Children[atom2].position, "repeat");
+                            break;
+                        case "1":
+                            try
+                            {
+                                ExpandObjects(singleBond, Children[atom1].position, Children[atom2].position, "stretch");
+
+                            }
+                            catch (NullReferenceException e)
+                            {
+                                Debug.LogError("Caught a null reference exception: " + e.Message);
+                                // Handle the exception or recover from it
+                            }
+
+                            break;
+                        case "1.5":
+                            ExpandObjects(oneAndHalfBond, Children[atom1].position, Children[atom2].position, "stretch");
+                            break;
+                        case "2":
+                            ExpandObjects(doubleBond, Children[atom1].position, Children[atom2].position, "stretch");
+                            break;
+                        case "2.5":
+                            ExpandObjects(twoAndHalfBond, Children[atom1].position, Children[atom2].position, "repeat");
+                            break;
+                        case "3":
+                            ExpandObjects(tripleBond, Children[atom1].position, Children[atom2].position, "stretch");
+                            break;
+                        default:
+                            ExpandObjects(singleBond, Children[atom1].position, Children[atom2].position, "stretch");
+                            break;
+                    }
+
+                }
+                timer -= Time.deltaTime;
+
+                if (timer <= 0f)
+                {
+                    // Perform your calculation here
+                    // float result = CalcDihedral(...);
+
+                    timer = interval; // Reset the timer
+                }
+
+
+                namecounter = 1;
+                //atoms = new List<String>();
+                //bonds = new List<String>();
+                //currentIndex = (currentIndex + 1) % readText.Count;
+                frameIndex = (frameIndex + 1) % frames.Count;
+                break;
+            }
+
+            if (framecounter == totalFrames)
+            {
+                framecounter = 0;
+
+            }
+
+            // cylinders.Clear();
+
+
+            //update the progress with frameIndex/totalFrames as a integer
+            UpdateProgressBar(Mathf.FloorToInt((float)frameIndex / (float)totalFrames * 100));
+        }
     }
 
     public void ExpandObjects(GameObject objectToExpand, Vector3 startPoint, Vector3 endPoint, string mode)
@@ -1133,7 +1234,7 @@ public class MainScreen : MonoBehaviour
     {
         var fastForwardIcon = Resources.Load<Texture2D>("fast-forward-100");
         var fastBackwardIcon = Resources.Load<Texture2D>("rewind-100");
-
+        var backButtonIcon = Resources.Load<Texture2D>("backward-96");
 
         fastForwardButton = rootElement.Q<Button>("fastforward");
         if (fastForwardButton != null)
@@ -1163,55 +1264,113 @@ public class MainScreen : MonoBehaviour
             FastBackward();
         });
 
+        backButton = rootElement.Q<Button>("back_button_1");
+        backButton2 = rootElement.Q<Button>("back_button_2");
+        if (backButton != null)
+        {
+            //backButton.style.backgroundImage = new StyleBackground(backButtonIcon);
+            backButton.style.unityBackgroundImageTintColor = Color.blue;
+            backButton.RegisterCallback<ClickEvent>(evt =>
+            {
+                Debug.Log("Back button clicked");
+                OnClickBackButton();
+                // Apply a style change to enlarge the button
+                backButton.style.scale = new Scale(new Vector3(1.2f, 1.2f, 1.2f)); // 20% larger
+
+                // Optionally, you can reset the scale after a delay
+                StartCoroutine(ResetScale(backButton, 0.1f)); // Reset after 0.1 seconds
+            });
+        }
+        if (backButton2 != null)
+        {
+            //backButton2.style.backgroundImage = new StyleBackground(backButtonIcon);
+            backButton2.style.unityBackgroundImageTintColor = Color.blue;
+            backButton2.RegisterCallback<ClickEvent>(evt =>
+            {
+                Debug.Log("Back button 2 clicked");
+                OnClickBackButton();
+                backButton2.style.scale = new Scale(new Vector3(1.2f, 1.2f, 1.2f)); // 20% larger
+
+                // Optionally, you can reset the scale after a delay
+                StartCoroutine(ResetScale(backButton2, 0.05f)); // Reset after 0.1 seconds
+            });
+        }
+
+
+
+
         frameSlider = rootElement.Q<Slider>("Slider");
         // Set the slider range
         frameSlider.lowValue = 0;
         // Listen to value changes (when the user moves the slider)
         frameSlider.RegisterValueChangedCallback(evt =>
         {
-            int percentage = Mathf.FloorToInt(evt.newValue);
-            JumpToFrame(percentage);
+            if (!isUpdatingFromCode)
+            {
+                int percentage = Mathf.FloorToInt(evt.newValue);
+                JumpToFrame(percentage);
+            }
         });
+    }
+
+    // Coroutine to reset the button scale
+    private IEnumerator ResetScale(Button button, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        button.style.scale = new Scale(Vector3.one); // Reset to original size
     }
 
     void JumpToFrame(int percentage)
     {
         // Implement your logic to change the content to the specified frame
         //Debug.Log($"Jumping to frame: {frameIndex}");
+        int frame = Mathf.FloorToInt((float)percentage / 100 * frames.Count);
+        JumpToTS(frame);
+    }
+
+    void JumpToTS(int TSFrame)
+    {
+        frameIndex = TSFrame;
+        RenderFrame();
     }
 
     void UpdateProgressBar(float progress)
     {
         if (frameSlider != null)
         {
+            isUpdatingFromCode = true;
             frameSlider.value = progress;
+            isUpdatingFromCode = false;
         }
     }
 
-    void UpdateIcon(bool isPaused)
+    void UpdateIcon(bool isPlaying)
     {
-        var icon = isPaused ? playIcon : pauseIcon;
+        var icon = isPlaying ? pauseIcon : playIcon;
         playPauseToggle.style.backgroundImage = new StyleBackground(icon.texture);
         playPauseToggle.style.unityBackgroundImageTintColor = Color.blue;
     }
 
-    public void StopLoop()
+    public void Pause()
     {
         // Stop the loop when the button is clicked
-        isLooping = !isLooping;
+        isPlaying = !isPlaying;
     }
 
     public void FastForward()
     {
         int skipAmount = Mathf.Max(1, frames.Count / 10); // Example: Skip 1/50th of the total frames
         frameIndex = (frameIndex + skipAmount) % frames.Count;
+        RenderFrame();
     }
 
     public void FastBackward()
     {
         int skipAmount = Mathf.Max(1, frames.Count / 10); // Ensure at least one frame is skipped
         frameIndex = ((frameIndex - skipAmount) % frames.Count + frames.Count) % frames.Count;
+        RenderFrame();
     }
+
 
     public void SpeedUp2X()
     {

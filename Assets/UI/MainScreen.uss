@@ -40,17 +40,21 @@
 }
 
 #Slider #unity-tracker {
-    background-color: #387ADF; /* Light blue */
-        border-color: #FFFFFF; /* White border for contrast */
+    background-color: rgb(56, 122, 223);
+    border-color: rgb(255, 255, 255);
     border-width: 2px;
 }
 
 #Slider #unity-dragger {
-	 background-color: #0000FF; /* Saturated blue, adjust based on your theme */
-    border-color: #FFFFFF; /* White border for contrast */
+    background-color: rgb(0, 0, 255);
+    border-color: #DCDCDC;
     border-width: 2px;
+    border-radius: 50%; /* Make it a circle */
+    border-style: solid;
+    width: 20px; /* Adjust the size */
+    height: 20px; /* Adjust the size */
+    max-height: none; /* Override any max-height restrictions */
 }
-
 
 #unity-dragger {
     background-color: lightgray;
@@ -66,67 +70,78 @@
     margin-bottom: 5px;
 }
 
-.toggleInput .unity-toggle__checkmark{
+.toggleInput .unity-toggle__checkmark {
     display: none;
     opacity: 0;
     background-color: red;
 }
 
-
-.unity-base-dropdown__item{
-
-	background-color: transparent;
-	border-width: 0;
-
-
+.unity-base-dropdown__item {
+    background-color: transparent;
+    border-width: 0;
 }
 
-.unity-base-dropdown__item .unity-label{
-
-	color: blue;
-
+.unity-base-dropdown__item .unity-label {
+    color: blue;
 }
 
-.unity-base-dropdown .unity-scroll-view , .unity-base-dropdown__container-outer, .unity-base-popup-field:hover > .unity-base-popup-field__input, .unity-base-popup-field:active ,.unity-base-field__input, .unity-base-popup-field:active > .unity-base-popup-field__input{
-
-	background-color: transparent;
-	border-width: 0;
-
-
+.unity-base-dropdown .unity-scroll-view {
+    background-color: transparent;
+    border-width: 0;
 }
 
+.unity-base-dropdown__container-outer {
+    background-color: transparent;
+    border-width: 0;
+}
 
+.unity-base-popup-field:hover > .unity-base-popup-field__input {
+    background-color: transparent;
+    border-width: 0;
+}
 
-.unity-base-popup-field__arrow{
+.unity-base-popup-field:active {
+    background-color: transparent;
+    border-width: 0;
+}
+
+.unity-base-field__input {
+    background-color: transparent;
+    border-width: 0;
+}
+
+.unity-base-popup-field:active > .unity-base-popup-field__input {
+    background-color: transparent;
+    border-width: 0;
+}
+
+.unity-base-popup-field__arrow {
     display: none;
 }
 
-#fastforward{
-
-    background-size: cover; /* Or use 100% 100% to fill the entire button */
-
-    /* Set width and height as needed */
+#fastforward {
+    background-size: cover;
     width: 100px;
     height: 100px;
 }
 
-#fastbackward{
-
-    background-size: cover; /* Or use 100% 100% to fill the entire button */
-
-    /* Set width and height as needed */
+#fastbackward {
+    background-size: cover;
     width: 100px;
     height: 100px;
 }
-
-/*.my-toggle .unity-toggle__checkmark {
-    border-radius: 50%;
-    width: 60%;
-    height: 60%;
-    background-color: rgb(0, 120, 212);
-}*/
 
 .ui_page {
-    margin-top: 100px;
     flex-direction: column;
+}
+
+.back_button_style {
+    background-size: cover;
+    background-color: transparent;
+    max-width: 100px;
+    background-image: resource('icons/left-arrow');
+    max-height: 100px;
+    height: 50px;
+    width: 50px;
+    transition: transform 0.1s ease-in-out;
 }
