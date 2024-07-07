@@ -647,7 +647,7 @@ public class MainScreen : MonoBehaviour
 
 
                     }
-                    else
+                    else if (hightLighted.Count < 4)
                     {
                         Color originalColor = mat.GetColor("_Color");
                         Color highlightedColor = originalColor * 2.0f; // Increase brightness

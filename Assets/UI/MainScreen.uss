@@ -1,6 +1,6 @@
 * {
-    -unity-font: url("project://database/Assets/Fonts/PlaywriteNGModern-Regular.ttf");
-    -unity-font-definition: url("project://database/Assets/Fonts/PlaywriteNGModern-Regular SDF.asset");
+    -unity-font: url("project://database/Assets/Fonts/Roboto-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Fonts/Roboto-Regular SDF.asset");
 
 }
 
@@ -59,8 +59,8 @@
     border-width: 2px;
     border-radius: 50%; /* Make it a circle */
     border-style: solid;
-    width: 20px; /* Adjust the size */
-    height: 20px; /* Adjust the size */
+    width: 40px; /* Adjust the size */
+    height: 40px; /* Adjust the size */
     max-height: none; /* Override any max-height restrictions */
 }
 
