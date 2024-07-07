@@ -1,9 +1,10 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <Style src="project://database/Assets/UI/MainScreen.uss?fileID=7433441132597879392&amp;guid=b353b70d7d48cf54baae9c9c543dcb25&amp;type=3#MainScreen" />
+    <ui:VisualElement name="SafeAreaOffset" style="flex-grow: 1; background-color: rgb(255, 255, 255); min-width: 3000px; min-height: 10px; position: absolute;" />
     <SafeAreaManager>
         <ui:VisualElement>
             <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); min-width: 3000px; min-height: 3000px; position: relative;" />
-            <ui:VisualElement name="ui_page_1" class="ui_page" style="position: absolute; flex-grow: 1; width: 100%; height: 95%; left: 0; top: 0; right: 0; bottom: 0; margin-top: 0; padding-top: 5%;">
+            <ui:VisualElement name="ui_page_1" class="ui_page" style="position: absolute; flex-grow: 1; width: 100%; height: 100%; left: 0; top: 0; right: 0; bottom: 0; margin-top: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0;">
                 <ui:VisualElement name="back_button_holder" style="position: relative; flex-grow: 0; width: 100%; left: 0; top: 0; right: 0; bottom: 0; margin-top: 0; background-color: rgb(255, 255, 255);">
                     <ui:Button name="back_button_1" display-tooltip-when-elided="true" class="back_button_style" style="background-color: rgba(0, 0, 0, 0); border-top-width: 0; border-right-width: 0; border-bottom-width: 0; border-left-width: 0; margin-right: 4%; margin-left: 4%;" />
                 </ui:VisualElement>

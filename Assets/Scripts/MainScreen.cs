@@ -280,8 +280,8 @@ public class MainScreen : MonoBehaviour
         bottom = rootElement.Q<VisualElement>("Bottom");
         top = rootElement.Q<VisualElement>("Top");
         viewWindow = rootElement.Q<VisualElement>("ViewWindow");
-        //safeAreaOffset = rootElement.Q<VisualElement>("SafeAreaOffset");
-
+        safeAreaOffset = rootElement.Q<VisualElement>("SafeAreaOffset");
+        safeAreaOffset.style.height = Screen.height - Screen.safeArea.yMax;
 
         ColorAllButtons();
         UpdateIcon(playPauseToggle.value);
