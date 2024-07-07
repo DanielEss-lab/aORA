@@ -1,3 +1,11 @@
+* {
+    -unity-font: url("project://database/Assets/Fonts/PlaywriteNGModern-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Fonts/PlaywriteNGModern-Regular SDF.asset");
+
+}
+
+
+
 .my-button {
     color: white;
     background-color: lightblue;
@@ -144,4 +152,8 @@
     height: 50px;
     width: 50px;
     transition: transform 0.1s ease-in-out;
+}
+
+#expandall > .unity-base-field__label {
+    min-width: 60px;
 }

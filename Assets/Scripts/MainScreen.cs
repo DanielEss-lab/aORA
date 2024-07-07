@@ -149,6 +149,7 @@ public class MainScreen : MonoBehaviour
     private VisualElement bottom;
     private VisualElement top;
     private VisualElement viewWindow;
+    private VisualElement safeAreaOffset;
 
     private bool isLoading = false;
     // Flag to indicate if the slider is being updated programmatically
@@ -182,8 +183,7 @@ public class MainScreen : MonoBehaviour
         reactionsList = JsonUtility.FromJson<ReactionsList>(jsonString);
 
         foreach (Reaction reaction in reactionsList.reactions)
-        {
-            Debug.Log(reaction.reactionName + " " + reaction.transitionState);                    
+        {               
             if (categories.ContainsKey(reaction.category))
             {
                 categories[reaction.category].Add(reaction);
@@ -262,7 +262,6 @@ public class MainScreen : MonoBehaviour
 
         var uiDocumentComponent = GetComponent<UIDocument>();
         rootElement = uiDocument.CloneTree();
-
         if (uiDocumentComponent != null)
         {
             uiDocumentComponent.rootVisualElement.Clear();
@@ -281,6 +280,8 @@ public class MainScreen : MonoBehaviour
         bottom = rootElement.Q<VisualElement>("Bottom");
         top = rootElement.Q<VisualElement>("Top");
         viewWindow = rootElement.Q<VisualElement>("ViewWindow");
+        //safeAreaOffset = rootElement.Q<VisualElement>("SafeAreaOffset");
+
 
         ColorAllButtons();
         UpdateIcon(playPauseToggle.value);
@@ -309,28 +310,28 @@ public class MainScreen : MonoBehaviour
             switch (speeds[currentIndex])
             {
                 case "0.5X":
-                    playbackRate = 10f;
+                    playbackRate = 2f;
                     break;
                 case "1X":
-                    playbackRate = 20f;
+                    playbackRate = 5f;
                     break;
                 case "2X":
-                    playbackRate = 40f;
+                    playbackRate = 10f;
                     break;
                 case "3X":
-                    playbackRate = 100f;
+                    playbackRate = 15f;
                     break;
                 case "4X":
-                    playbackRate = 150f;
+                    playbackRate = 20f;
                     break;
                 case "5X":
-                    playbackRate = 200f;
+                    playbackRate = 25f;
                     break;
                 case "10x":
-                    playbackRate = 400f;
+                    playbackRate = 50f;
                     break;
                 default:
-                    playbackRate = 50f;  // Default to 1X speed if none of the options match
+                    playbackRate = 5f;  // Default to 1X speed if none of the options match
                     break;
             }
 
@@ -470,7 +471,8 @@ public class MainScreen : MonoBehaviour
         currentIndex = 0;
         framecounter = 0;
         frameIndex = 0;
-        playbackRate = 50.0f;
+        totalFrames = 1;
+        playbackRate = 5f;
 
         reaction_name.text = reaction.reactionName;
         //reaction_name.visible = true;
@@ -845,7 +847,7 @@ public class MainScreen : MonoBehaviour
     }
 
 
-    private float playbackRate = 50.0f; // Frames per second
+    private float playbackRate = 5f; // Frames per second
     private float timeSinceLastFrameChange = 0.0f;
 
     private void Update()
@@ -1049,8 +1051,8 @@ public class MainScreen : MonoBehaviour
                     else
                     {
                         String atom = AtomNames[i];
-                        Vector3 newPosition = Vector3.Lerp(Children[atom].localPosition, position, Time.deltaTime * speed);
-                        Children[AtomNames[i]].localPosition = newPosition;
+                        //Vector3 newPosition = Vector3.Lerp(Children[atom].localPosition, position, Time.deltaTime * speed);
+                        Children[AtomNames[i]].localPosition = position;
                     }
 
 
@@ -1133,8 +1135,9 @@ public class MainScreen : MonoBehaviour
 
 
             //update the progress with frameIndex/totalFrames as a integer
-            UpdateProgressBar(Mathf.FloorToInt((float)frameIndex / (float)totalFrames * 100));
+            
         }
+        UpdateProgressBar(Mathf.FloorToInt((float)frameIndex / (float)totalFrames * 100));
     }
 
     public void ExpandObjects(GameObject objectToExpand, Vector3 startPoint, Vector3 endPoint, string mode)
@@ -1302,6 +1305,7 @@ public class MainScreen : MonoBehaviour
         frameSlider = rootElement.Q<Slider>("Slider");
         // Set the slider range
         frameSlider.lowValue = 0;
+        frameSlider.highValue = 100f;
         // Listen to value changes (when the user moves the slider)
         frameSlider.RegisterValueChangedCallback(evt =>
         {
@@ -1324,7 +1328,7 @@ public class MainScreen : MonoBehaviour
     {
         // Implement your logic to change the content to the specified frame
         //Debug.Log($"Jumping to frame: {frameIndex}");
-        int frame = Mathf.FloorToInt((float)percentage / 100 * frames.Count);
+        int frame = Mathf.Max(Mathf.FloorToInt((float)percentage / 100 * frames.Count)-1, 0);
         JumpToTS(frame);
     }
 
@@ -1338,10 +1342,16 @@ public class MainScreen : MonoBehaviour
     {
         if (frameSlider != null)
         {
-            isUpdatingFromCode = true;
-            frameSlider.value = progress;
-            isUpdatingFromCode = false;
+            StartCoroutine(UpdateSliderValue(progress));
         }
+    }
+
+    IEnumerator UpdateSliderValue(float progress)
+    {
+        isUpdatingFromCode = true;
+        frameSlider.value = progress;
+        yield return null; // Wait for one frame to ensure the value is processed
+        isUpdatingFromCode = false;
     }
 
     void UpdateIcon(bool isPlaying)
