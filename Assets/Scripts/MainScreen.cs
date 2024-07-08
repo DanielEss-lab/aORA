@@ -69,6 +69,7 @@ public class MainScreen : MonoBehaviour
     public Sprite playIcon;
     public Sprite pauseIcon;
     private Button TSButton;
+    private Button descriptionButton;
  
 
 
@@ -119,6 +120,7 @@ public class MainScreen : MonoBehaviour
 
     private UnityEngine.UIElements.Label elements_angle;
     private UnityEngine.UIElements.Label reaction_name;
+    private UnityEngine.UIElements.Label description;
 
 
     private List<GameObject> cylinders = new List<GameObject>();
@@ -154,6 +156,8 @@ public class MainScreen : MonoBehaviour
     private bool isLoading = false;
     // Flag to indicate if the slider is being updated programmatically
     private bool isUpdatingFromCode = false;
+
+    private EventCallback<ClickEvent> currentCallback;
 
     public bool IsExpanded
     {
@@ -230,14 +234,14 @@ public class MainScreen : MonoBehaviour
         toggleButton = rootElement.Q<Toggle>("expandall");
         toggleButton.AddToClassList("my-toggle-button");
         toggleButton.value = false;
-        toggleButton.label = toggleButton.value ? "Collapse All" : "Expand All";
-        toggleButton.RegisterValueChangedCallback(evt =>
-        {
-            toggleButton.label = evt.newValue ? "Collapse All" : "Expand All";
-        });
+        toggleButton.label = toggleButton.value ? "\u2191 Collapse All" : "\u2193 Expand All";
+        //toggleButton.RegisterValueChangedCallback(evt =>
+        //{
+        //    toggleButton.label = evt.newValue ? "Collapse All" : "Expand All";
+        //});
         toggleButton.RegisterCallback<ClickEvent>(evt =>
         {
-            toggleButton.label = toggleButton.value ? "Collapse All" : "Expand All";
+            toggleButton.label = toggleButton.value ? "\u2191 Collapse All" : "\u2193 Expand All";
             if (toggleButton.value)
             {
                 ExpandAllFoldouts();
@@ -276,6 +280,8 @@ public class MainScreen : MonoBehaviour
         reactionPage = rootElement.Q<VisualElement>("ui_page_2");
         elements_angle = rootElement.Q<UnityEngine.UIElements.Label>("elements_angle");
         reaction_name = rootElement.Q<UnityEngine.UIElements.Label>("reaction_name");
+        description = rootElement.Q<UnityEngine.UIElements.Label>("description");
+        descriptionButton = rootElement.Q<Button>("Description_Button");
         playPauseToggle = rootElement.Q<Toggle>("pauseButton");
         bottom = rootElement.Q<VisualElement>("Bottom");
         top = rootElement.Q<VisualElement>("Top");
@@ -283,12 +289,13 @@ public class MainScreen : MonoBehaviour
         safeAreaOffset = rootElement.Q<VisualElement>("SafeAreaOffset");
         safeAreaOffset.style.height = Screen.height - Screen.safeArea.yMax;
 
+
         ColorAllButtons();
         UpdateIcon(playPauseToggle.value);
         playPauseToggle.RegisterValueChangedCallback(evt =>
         {
             Pause();
-            UpdateIcon(evt.newValue);
+            UpdateIcon(isPlaying);
         });
        
         TSButton = rootElement.Q<Button>("TSButton");
@@ -338,38 +345,6 @@ public class MainScreen : MonoBehaviour
             Debug.Log($"Updated Speed: {playbackRate}");
         };
 
-        //// Access the DropdownField by name
-        //var speedControl = rootElement.Q<DropdownField>("speedControl");
-
-        //// Populate the choices
-        //speedControl.choices = new List<string> { "0.5X", "1X", "2X" };
-
-        //// Optionally set the default selected index
-        //speedControl.index = 1; // This selects "1X" by default
-
-        //// Register a value changed event listener
-        //speedControl.RegisterValueChangedCallback(evt =>
-        //{
-        //    // Convert the selected string to a float and update the speed variable
-        //    string selectedOption = evt.newValue;
-        //    switch (selectedOption)
-        //    {
-        //        case "0.5X":
-        //            playbackRate = 30f;
-        //            break;
-        //        case "1X":
-        //            playbackRate = 80f;
-        //            break;
-        //        case "2X":
-        //            playbackRate = 200f;
-        //            break;
-        //        default:
-        //            playbackRate = 50f; // Default speed if none of the options match
-        //            break;
-        //    }
-
-        //    Debug.Log($"Updated Speed: {speed}");
-        //});
         container = rootElement.Q<ScrollView>("container");
         isInertiaActive = false;
 
@@ -473,8 +448,10 @@ public class MainScreen : MonoBehaviour
         frameIndex = 0;
         totalFrames = 1;
         playbackRate = 5f;
+        isPlaying = true;
 
         reaction_name.text = reaction.reactionName;
+
         //reaction_name.visible = true;
         wholeReaction = new GameObject();
         wholeReaction.name = "wholeReaction";
@@ -504,6 +481,28 @@ public class MainScreen : MonoBehaviour
             }
 
 
+        }
+
+        if(descriptionButton != null)
+        {
+            Debug.Log("Description Button is not null");
+            if (!string.IsNullOrEmpty(reaction.description))
+            {
+                Debug.Log("Description is enabled" + reaction.description);
+                description.visible = false;
+                descriptionButton.SetEnabled(true);
+                descriptionButton.style.color = Color.blue;
+                // Create a new callback and register it
+                currentCallback = evt => OnDescriptionButtonClick(evt, reaction);
+                descriptionButton.RegisterCallback(currentCallback);
+            }
+            else
+            {
+                Debug.Log("Description is disabled");
+                descriptionButton.SetEnabled(false);
+                descriptionButton.style.color = Color.gray;
+            }
+            
         }
 
         hightLighted = new List<string>();
@@ -604,7 +603,13 @@ public class MainScreen : MonoBehaviour
             isUI = true;
             currentPanelIndex = 0;
             frameIndex = 0;
-            isPlaying = true;
+            isPlaying = false;
+            description.text = "";
+            description.visible = false;
+            if (currentCallback != null)
+            {
+                descriptionButton.UnregisterCallback<ClickEvent>(currentCallback);
+            }
 
 
             //TODO: show previous panel
@@ -617,6 +622,24 @@ public class MainScreen : MonoBehaviour
 
         }
 
+    }
+
+    private void OnDescriptionButtonClick(ClickEvent evt, Reaction reaction)
+    {
+        if (description.visible)
+        {
+            Debug.Log("Description is visible, change to invisible");
+            description.text = "";
+            description.visible = false;
+            descriptionButton.text = "\u2191 Show Description";
+        }
+        else
+        {
+            Debug.Log("Description is invisible, change to visible");
+            description.text = reaction.description;
+            description.visible = true;
+            descriptionButton.text = "\u2193 Hide Description";
+        }
     }
 
 

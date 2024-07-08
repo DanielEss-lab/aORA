@@ -72,16 +72,33 @@
 
 .my-toggle-button {
     color: lightblue;
-    font-size: 40px;
+    font-size: 30px;
     margin-right: 20px;
     align-self: flex-end;
     margin-bottom: 5px;
+}
+
+/* Style the label to look like a round button */
+#expandall > .unity-toggle__label {
+    background-color: lightblue;
+    width: 250 px;
+    color: white;
+    border-radius: 15px;
+    padding: 10px 20px;
+    text-align: center;
+    cursor: pointer;
+    border: 2px solid #005fa3;
+    transition: background-color 0.3s, border-color 0.3s;
 }
 
 .toggleInput .unity-toggle__checkmark {
     display: none;
     opacity: 0;
     background-color: red;
+}
+
+#expandall > .unity-toggle__input {
+    display: none;
 }
 
 .unity-base-dropdown__item {
