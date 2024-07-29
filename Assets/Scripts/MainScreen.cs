@@ -70,6 +70,7 @@ public class MainScreen : MonoBehaviour
     public Sprite pauseIcon;
     private Button TSButton;
     private Button descriptionButton;
+    private Boolean beginingScaleFactor = true;
  
 
 
@@ -449,6 +450,15 @@ public class MainScreen : MonoBehaviour
         totalFrames = 1;
         playbackRate = 5f;
         isPlaying = true;
+        beginingScaleFactor = true;
+        MinX = 0;
+        MinY = 0;
+        MaxX = 0;
+        MaxY = 0;
+
+
+
+        UpdateIcon(isPlaying);
 
         reaction_name.text = reaction.reactionName;
 
@@ -606,6 +616,7 @@ public class MainScreen : MonoBehaviour
             isPlaying = false;
             description.text = "";
             description.visible = false;
+            beginingScaleFactor = true;
             if (currentCallback != null)
             {
                 descriptionButton.UnregisterCallback<ClickEvent>(currentCallback);
@@ -1006,6 +1017,16 @@ public class MainScreen : MonoBehaviour
 
     }
 
+    bool IsOutOfScreen(Vector3 worldPosition)
+    {
+        // Convert world position to viewport position
+        Vector3 viewportPosition = Camera.main.WorldToViewportPoint(worldPosition);
+
+        // Check if the position is outside the viewport bounds
+        return viewportPosition.x < 0 || viewportPosition.x > 1 ||
+               viewportPosition.y < 0 || viewportPosition.y > 1;
+    }
+
     private void RenderFrame() {
         List<String> atoms = new List<String>();
         List<String> atomNameIndex = new List<String>();
@@ -1041,7 +1062,6 @@ public class MainScreen : MonoBehaviour
             match = Regex.Match(s, endPattern);
             if (match.Success)
             {
-                framecounter += 1;
                 // Debug.Log("frame counter: " + framecounter);
                 for (int i = 1; i < namecounter; i++)
                 {
@@ -1050,21 +1070,24 @@ public class MainScreen : MonoBehaviour
                     Vector3 position = new Vector3(float.Parse(atomPos[0]), float.Parse(atomPos[1]), float.Parse(atomPos[2]));
 
 
-                    if (framecounter == 1)
+                    if (beginingScaleFactor)
                     {
 
-                        MinX = Math.Min(MinX, float.Parse(atomPos[0]));
-                        MinY = Math.Min(MinY, float.Parse(atomPos[1]));
-                        MaxX = Math.Max(MaxX, float.Parse(atomPos[0]));
-                        MaxY = Math.Max(MaxY, float.Parse(atomPos[1]));
+                        MinX = Math.Min(MinX, position.x);
+
+                        MaxX = Math.Max(MaxX, position.x);
+
                         float reactionWidth = MaxX - MinX;
                         var width = Camera.main.orthographicSize * 2.0 * Screen.width / Screen.height;
 
                         scaleFactor = (float)width / reactionWidth;
 
 
+
+
+
                     }
-                    curReaction.transform.localScale = new Vector3(scaleFactor * 1.2f, scaleFactor * 1.2f, scaleFactor * 1.2f);
+
                     String atomName = atomPos[3] + i.ToString().PadLeft(namecounter.ToString().Length, '0');
                     if (frameIndex == 0)
                     {
@@ -1079,7 +1102,25 @@ public class MainScreen : MonoBehaviour
                     }
 
 
+
                 }
+                if (beginingScaleFactor)
+                {
+                    //curReaction.transform.localScale = new Vector3(scaleFactor * 0.6f, scaleFactor * 0.6f, scaleFactor * 0.6f);
+                    if(scaleFactor > 0.36f)
+                    {
+                        curReaction.transform.localScale = new Vector3(0.36f, 0.36f, 0.36f);
+                    }
+                    else
+                    {
+                        curReaction.transform.localScale = new Vector3(scaleFactor * 0.5f, scaleFactor * 0.5f, scaleFactor * 0.5f);
+                    }
+
+
+                    Debug.Log("First scale frame: " + frameIndex + "Scale Factor: " + scaleFactor);
+                    beginingScaleFactor = false;
+                }
+
                 foreach (String bond in bonds)
                 {
 
@@ -1258,8 +1299,8 @@ public class MainScreen : MonoBehaviour
 
     void ColorAllButtons()
     {
-        var fastForwardIcon = Resources.Load<Texture2D>("fast-forward-100");
-        var fastBackwardIcon = Resources.Load<Texture2D>("rewind-100");
+        var fastForwardIcon = Resources.Load<Texture2D>("icons/fast-forward-512");
+        var fastBackwardIcon = Resources.Load<Texture2D>("icons/rewind");
         var backButtonIcon = Resources.Load<Texture2D>("backward-96");
 
         fastForwardButton = rootElement.Q<Button>("fastforward");
@@ -1283,7 +1324,9 @@ public class MainScreen : MonoBehaviour
             // Note: This specific approach does not apply directly as UI Toolkit does not support backgroundImageTintColor in USS
             // You'd need to adjust the material or shader of the image asset used or manage color tinting through other means
             fastBackwardButton.style.backgroundImage = new StyleBackground(fastBackwardIcon);
-            fastBackwardButton.style.unityBackgroundImageTintColor = Color.blue; // RGBA
+            //set the color of the button to be "#3FA2F6"
+            //fastBackwardButton.style.unityBackgroundImageTintColor = new Color(0.2f, 0.2275f, 0.451f);
+            fastBackwardButton.style.unityBackgroundImageTintColor = Color.blue;
         }
         fastBackwardButton.RegisterCallback<ClickEvent>(evt =>
         {
@@ -1379,8 +1422,10 @@ public class MainScreen : MonoBehaviour
 
     void UpdateIcon(bool isPlaying)
     {
-        var icon = isPlaying ? pauseIcon : playIcon;
-        playPauseToggle.style.backgroundImage = new StyleBackground(icon.texture);
+        var playIcon512 = Resources.Load<Texture2D>("icons/play-512");
+        var pauseIcon512 = Resources.Load<Texture2D>("icons/pause-512");
+        var icon = isPlaying ? pauseIcon512 : playIcon512;
+        playPauseToggle.style.backgroundImage = new StyleBackground(icon);
         playPauseToggle.style.unityBackgroundImageTintColor = Color.blue;
     }
 

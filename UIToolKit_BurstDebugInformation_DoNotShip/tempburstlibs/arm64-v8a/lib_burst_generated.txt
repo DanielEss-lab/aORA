@@ -25,6 +25,7 @@ Library: C:\Users\sirius\computerScience\AORA-UIToolKit\Temp\BurstOutput\tempbur
 --assembly-defines=UnityEngine;
 --generate-link-xml=Temp\burst.link.xml
 --temp-folder=C:\Users\sirius\computerScience\AORA-UIToolKit\Temp\Burst
+--debug=Full
 --key-folder=C:/Program Files/Unity/Hub/Editor/2022.3.16f1/Editor/Data/PlaybackEngines/AndroidPlayer
 --decode-folder=C:\Users\sirius\computerScience\AORA-UIToolKit\Library\Burst
 --output=C:\Users\sirius\computerScience\AORA-UIToolKit\Temp\BurstOutput\tempburstlibs\arm64-v8a\lib_burst_generated
