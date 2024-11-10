@@ -18,6 +18,9 @@ using TMPro;
 using static UnityEngine.ParticleSystem;
 using Slider = UnityEngine.UIElements.Slider;
 using UnityEngine.XR;
+using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
+using System.Drawing;
+using Color = UnityEngine.Color;
 
 [System.Serializable]
 public class Reaction
@@ -69,6 +72,10 @@ public class MainScreen : MonoBehaviour
     public Sprite playIcon;
     public Sprite pauseIcon;
     private Button TSButton;
+    private Button descriptionButton;
+    private Button speedButton;
+    private int speedIndex;
+    private Boolean beginingScaleFactor = true;
  
 
 
@@ -78,6 +85,7 @@ public class MainScreen : MonoBehaviour
     private GameObject wholeReaction;
     public Dictionary<string, Transform> Children = new Dictionary<string, Transform>();
     private Dictionary<int, String> AtomNames = new Dictionary<int, String>();
+    private Dictionary<string, Color> originalColors = new Dictionary<string, Color>();
 
     private String pattern = @"^(\s+-?\d+\.?\d+){3}\s+\w{1,2}";
     private String bondpattern = @"^\s*\d+\s+\d+\s+(\d+|[0-9]*\.[0-9]+)(\s+\d+)*\s*$";
@@ -95,7 +103,6 @@ public class MainScreen : MonoBehaviour
     public GameObject Line;
     public GameObject LineInstance;
     Vector3 fixedPostion = new Vector3(0, 2, 0);
-    private int framecounter = 0;
     private int currentPanelIndex = 0;
     private int currentIndex = 0;
     private int frameIndex = 0;
@@ -119,6 +126,7 @@ public class MainScreen : MonoBehaviour
 
     private UnityEngine.UIElements.Label elements_angle;
     private UnityEngine.UIElements.Label reaction_name;
+    private UnityEngine.UIElements.Label description;
 
 
     private List<GameObject> cylinders = new List<GameObject>();
@@ -149,10 +157,14 @@ public class MainScreen : MonoBehaviour
     private VisualElement bottom;
     private VisualElement top;
     private VisualElement viewWindow;
+    private VisualElement safeAreaOffset;
 
     private bool isLoading = false;
     // Flag to indicate if the slider is being updated programmatically
     private bool isUpdatingFromCode = false;
+
+    private EventCallback<ClickEvent> currentCallback;
+    private EventCallback<ClickEvent> TSCallback;
 
     public bool IsExpanded
     {
@@ -182,8 +194,7 @@ public class MainScreen : MonoBehaviour
         reactionsList = JsonUtility.FromJson<ReactionsList>(jsonString);
 
         foreach (Reaction reaction in reactionsList.reactions)
-        {
-            Debug.Log(reaction.reactionName + " " + reaction.transitionState);                    
+        {               
             if (categories.ContainsKey(reaction.category))
             {
                 categories[reaction.category].Add(reaction);
@@ -211,7 +222,7 @@ public class MainScreen : MonoBehaviour
             // Add two buttons to each foldout 
             foreach (Reaction reaction in categories[category])
             {
-                var button = new Button(() => ButtonClicked(reaction))
+                var button = new Button(() => OnClickReactionButton(reaction))
                 {
                     text = reaction.reactionName
                 };
@@ -230,14 +241,14 @@ public class MainScreen : MonoBehaviour
         toggleButton = rootElement.Q<Toggle>("expandall");
         toggleButton.AddToClassList("my-toggle-button");
         toggleButton.value = false;
-        toggleButton.label = toggleButton.value ? "Collapse All" : "Expand All";
-        toggleButton.RegisterValueChangedCallback(evt =>
-        {
-            toggleButton.label = evt.newValue ? "Collapse All" : "Expand All";
-        });
+        toggleButton.label = toggleButton.value ? "\u2191 Collapse All" : "\u2193 Expand All";
+        //toggleButton.RegisterValueChangedCallback(evt =>
+        //{
+        //    toggleButton.label = evt.newValue ? "Collapse All" : "Expand All";
+        //});
         toggleButton.RegisterCallback<ClickEvent>(evt =>
         {
-            toggleButton.label = toggleButton.value ? "Collapse All" : "Expand All";
+            toggleButton.label = toggleButton.value ? "\u2191 Collapse All" : "\u2193 Expand All";
             if (toggleButton.value)
             {
                 ExpandAllFoldouts();
@@ -262,7 +273,6 @@ public class MainScreen : MonoBehaviour
 
         var uiDocumentComponent = GetComponent<UIDocument>();
         rootElement = uiDocument.CloneTree();
-
         if (uiDocumentComponent != null)
         {
             uiDocumentComponent.rootVisualElement.Clear();
@@ -277,98 +287,71 @@ public class MainScreen : MonoBehaviour
         reactionPage = rootElement.Q<VisualElement>("ui_page_2");
         elements_angle = rootElement.Q<UnityEngine.UIElements.Label>("elements_angle");
         reaction_name = rootElement.Q<UnityEngine.UIElements.Label>("reaction_name");
+        description = rootElement.Q<UnityEngine.UIElements.Label>("description");
+        descriptionButton = rootElement.Q<Button>("Description_Button");
         playPauseToggle = rootElement.Q<Toggle>("pauseButton");
         bottom = rootElement.Q<VisualElement>("Bottom");
         top = rootElement.Q<VisualElement>("Top");
         viewWindow = rootElement.Q<VisualElement>("ViewWindow");
+        safeAreaOffset = rootElement.Q<VisualElement>("SafeAreaOffset");
+        safeAreaOffset.style.height = Screen.height - Screen.safeArea.yMax;
+
 
         ColorAllButtons();
         UpdateIcon(playPauseToggle.value);
         playPauseToggle.RegisterValueChangedCallback(evt =>
         {
             Pause();
-            UpdateIcon(evt.newValue);
+            UpdateIcon(isPlaying);
         });
        
         TSButton = rootElement.Q<Button>("TSButton");
 
-        var speedButton = rootElement.Q<Button>("SpeedButton");
+        speedButton = rootElement.Q<Button>("SpeedButton");
         speedButton.text = "1X";  // Set initial button text to "1X"
 
         // Current speed settings
         List<string> speeds = new List<string> { "0.5X", "1X", "2X", "3X", "4X", "5X", "10X" };
-        int currentIndex = 1;  // Start at "1X", which corresponds to speeds[1]
+        speedIndex = 1;  // Start at "1X", which corresponds to speeds[1]
 
         speedButton.clicked += () =>
         {
             // Move to the next item in the list cyclically
-            currentIndex = (currentIndex + 1) % speeds.Count;
-            speedButton.text = speeds[currentIndex];
+            speedIndex = (speedIndex + 1) % speeds.Count;
+            speedButton.text = speeds[speedIndex];
 
             // Update the playback rate based on selected speed
-            switch (speeds[currentIndex])
+            switch (speeds[speedIndex])
             {
                 case "0.5X":
-                    playbackRate = 10f;
+                    playbackRate = 2f;
                     break;
                 case "1X":
-                    playbackRate = 20f;
+                    playbackRate = 5f;
                     break;
                 case "2X":
-                    playbackRate = 40f;
+                    playbackRate = 10f;
                     break;
                 case "3X":
-                    playbackRate = 100f;
+                    playbackRate = 15f;
                     break;
                 case "4X":
-                    playbackRate = 150f;
+                    playbackRate = 20f;
                     break;
                 case "5X":
-                    playbackRate = 200f;
+                    playbackRate = 25f;
                     break;
-                case "10x":
-                    playbackRate = 400f;
+                case "10X":
+                    playbackRate = 50f;
                     break;
                 default:
-                    playbackRate = 50f;  // Default to 1X speed if none of the options match
+                    playbackRate = 5f;  // Default to 1X speed if none of the options match
                     break;
             }
 
             Debug.Log($"Updated Speed: {playbackRate}");
         };
 
-        //// Access the DropdownField by name
-        //var speedControl = rootElement.Q<DropdownField>("speedControl");
-
-        //// Populate the choices
-        //speedControl.choices = new List<string> { "0.5X", "1X", "2X" };
-
-        //// Optionally set the default selected index
-        //speedControl.index = 1; // This selects "1X" by default
-
-        //// Register a value changed event listener
-        //speedControl.RegisterValueChangedCallback(evt =>
-        //{
-        //    // Convert the selected string to a float and update the speed variable
-        //    string selectedOption = evt.newValue;
-        //    switch (selectedOption)
-        //    {
-        //        case "0.5X":
-        //            playbackRate = 30f;
-        //            break;
-        //        case "1X":
-        //            playbackRate = 80f;
-        //            break;
-        //        case "2X":
-        //            playbackRate = 200f;
-        //            break;
-        //        default:
-        //            playbackRate = 50f; // Default speed if none of the options match
-        //            break;
-        //    }
-
-        //    Debug.Log($"Updated Speed: {speed}");
-        //});
         container = rootElement.Q<ScrollView>("container");
         isInertiaActive = false;
 
@@ -455,7 +438,7 @@ public class MainScreen : MonoBehaviour
     }
 
 
-    private void ButtonClicked(Reaction reaction)
+    private void OnClickReactionButton(Reaction reaction)
     {
         Debug.Log($"Clicked Button {reaction.filename}");
 
@@ -468,17 +451,32 @@ public class MainScreen : MonoBehaviour
         Children = new Dictionary<string, Transform>();
         AtomNames = new Dictionary<int, String>();
         currentIndex = 0;
-        framecounter = 0;
         frameIndex = 0;
-        playbackRate = 50.0f;
+        totalFrames = 1;
+        playbackRate = 5f;
+        if(speedButton != null)
+            speedButton.text = "1X";
+        speedIndex = 1;
+        isPlaying = true;
+        beginingScaleFactor = true;
+        MinX = 0;
+        MinY = 0;
+        MaxX = 0;
+        MaxY = 0;
 
-        reaction_name.text = reaction.reactionName;
+
+
+        UpdateIcon(isPlaying);
+
+        reaction_name.text = "<align=\"justified\"><font-weight=100><size=42px>" + reaction.reactionName + "</size></font-weight></align>";
+
         //reaction_name.visible = true;
         wholeReaction = new GameObject();
         wholeReaction.name = "wholeReaction";
         //set the whole reaction's position to the fixed position
         wholeReaction.transform.position = fixedPostion;
         curReaction = InstantiatePrefabByName(reaction.filename, wholeReaction);
+        curReaction.transform.localScale = new Vector3(0.36f, 0.36f, 0.36f);
         curBond = new GameObject();
         curBond.name = "Bonds";
         curBond.transform.SetParent(wholeReaction.transform);
@@ -491,17 +489,41 @@ public class MainScreen : MonoBehaviour
                 
 
                 TSButton.style.color = Color.blue;
-                TSButton.clicked += () =>
-                {
-                    JumpToTS(reaction.transitionState);
-                };
+                TSButton.SetEnabled(true);
+                TSCallback = evt => JumpToTS(evt, reaction.transitionState);
+                TSButton.RegisterCallback(TSCallback);
             }
             else
             {
                 TSButton.style.color = Color.gray;
+                TSButton.SetEnabled(false);
             }
 
 
+        }
+
+        if(descriptionButton != null)
+        {
+            Debug.Log("Description Button is not null");
+            if (!string.IsNullOrEmpty(reaction.description))
+            {
+                Debug.Log("Description is enabled" + reaction.description);
+                description.visible = false;
+                descriptionButton.SetEnabled(true);
+                descriptionButton.style.color = Color.blue;
+                descriptionButton.text = "\u2191 Show Rxn Info";
+                // Create a new callback and register it
+                currentCallback = evt => OnDescriptionButtonClick(evt, reaction);
+                descriptionButton.RegisterCallback(currentCallback);
+            }
+            else
+            {
+                Debug.Log("Description is disabled");
+                descriptionButton.SetEnabled(false);
+                descriptionButton.style.color = Color.gray;
+                descriptionButton.text = "\u2191 Show Rxn Info";
+            }
+            
         }
 
         hightLighted = new List<string>();
@@ -602,7 +624,21 @@ public class MainScreen : MonoBehaviour
             isUI = true;
             currentPanelIndex = 0;
             frameIndex = 0;
-            isPlaying = true;
+            isPlaying = false;
+            description.text = "";
+            description.visible = false;
+            beginingScaleFactor = true;
+            originalColors = new Dictionary<string, Color>();
+            if (currentCallback != null)
+            {
+                descriptionButton.UnregisterCallback<ClickEvent>(currentCallback);
+                currentCallback = null;
+            }
+            if (TSCallback != null)
+            {
+                TSButton.UnregisterCallback<ClickEvent>(TSCallback);
+                TSCallback = null;
+            }
 
 
             //TODO: show previous panel
@@ -615,6 +651,24 @@ public class MainScreen : MonoBehaviour
 
         }
 
+    }
+
+    private void OnDescriptionButtonClick(ClickEvent evt, Reaction reaction)
+    {
+        if (description.visible)
+        {
+            Debug.Log("Description is visible, change to invisible");
+            description.text = "";
+            description.visible = false;
+            descriptionButton.text = "\u2191 Show Rxn Info";
+        }
+        else
+        {
+            Debug.Log("Description is invisible, change to visible");
+            description.text = "<align=\"justified\"><font-weight=100><size=25px>" + reaction.description + "</size></font-weight></align>";
+            description.visible = true;
+            descriptionButton.text = "\u2193 Hide Rxn Info";
+        }
     }
 
 
@@ -638,17 +692,34 @@ public class MainScreen : MonoBehaviour
                     Material mat = objRenderer.material; // Get a reference to the material
                     if (hightLighted.Contains(entry.Key))
                     {
-                        Color highlightedColor = mat.GetColor("_Color");
-                        Color originalColor = highlightedColor / 2.0f;
+                        //Color highlightedColor = mat.GetColor("_Color");
+                        //Color originalColor = highlightedColor / 2.0f;
+
+                        // Revert to the original color
+                        Color originalColor = originalColors[entry.Key];
                         mat.SetColor("_Color", originalColor);
+
+                        // Remove the entry from the highlighted list and originalColors dictionary
                         hightLighted.Remove(entry.Key);
+                        originalColors.Remove(entry.Key);
+
+
 
 
                     }
-                    else
+                    else if (hightLighted.Count < 4)
                     {
                         Color originalColor = mat.GetColor("_Color");
-                        Color highlightedColor = originalColor * 2.0f; // Increase brightness
+                        if (!originalColors.ContainsKey(entry.Key))
+                        {
+                            originalColors.Add(entry.Key, originalColor);
+                        }
+                        //Color highlightedColor = originalColor * 2.0f; // Increase brightness
+
+                        Color highlightColor = Color.gray; // Define the highlight color, e.g., yellow
+                        Color highlightedColor = Color.Lerp(originalColor, highlightColor, 0.5f);
+                        highlightedColor = Color.Lerp(Color.red, highlightedColor, 0.95f) * 1.5f;
+                       
                         mat.SetColor("_Color", highlightedColor); // Set the material color
                         //mat.EnableKeyword("_EMISSION"); // Enable emission keyword
                         //mat.SetColor("_EmissionColor", originalColor); // Set the emission color
@@ -813,7 +884,7 @@ public class MainScreen : MonoBehaviour
 
             if (hightLighted.Count == 2)
             {
-                float distance = (float)Math.Round(Vector3.Distance(Children[hightLighted[0]].position, Children[hightLighted[1]].position), 2);
+                float distance = (float)Math.Round(Vector3.Distance(Children[hightLighted[0]].localPosition, Children[hightLighted[1]].localPosition), 2);
                 combinedString += $"Distance:       {distance}\n";
                 elements_angle.text = combinedString;
             }
@@ -845,7 +916,7 @@ public class MainScreen : MonoBehaviour
     }
 
 
-    private float playbackRate = 50.0f; // Frames per second
+    private float playbackRate = 5f; // Frames per second
     private float timeSinceLastFrameChange = 0.0f;
 
     private void Update()
@@ -981,6 +1052,16 @@ public class MainScreen : MonoBehaviour
 
     }
 
+    bool IsOutOfScreen(Vector3 worldPosition)
+    {
+        // Convert world position to viewport position
+        Vector3 viewportPosition = Camera.main.WorldToViewportPoint(worldPosition);
+
+        // Check if the position is outside the viewport bounds
+        return viewportPosition.x < 0 || viewportPosition.x > 1 ||
+               viewportPosition.y < 0 || viewportPosition.y > 1;
+    }
+
     private void RenderFrame() {
         List<String> atoms = new List<String>();
         List<String> atomNameIndex = new List<String>();
@@ -1016,8 +1097,6 @@ public class MainScreen : MonoBehaviour
             match = Regex.Match(s, endPattern);
             if (match.Success)
             {
-                framecounter += 1;
-                // Debug.Log("frame counter: " + framecounter);
                 for (int i = 1; i < namecounter; i++)
                 {
                     String line = atoms[i - 1];
@@ -1025,21 +1104,24 @@ public class MainScreen : MonoBehaviour
                     Vector3 position = new Vector3(float.Parse(atomPos[0]), float.Parse(atomPos[1]), float.Parse(atomPos[2]));
 
 
-                    if (framecounter == 1)
+                    if (beginingScaleFactor)
                     {
 
-                        MinX = Math.Min(MinX, float.Parse(atomPos[0]));
-                        MinY = Math.Min(MinY, float.Parse(atomPos[1]));
-                        MaxX = Math.Max(MaxX, float.Parse(atomPos[0]));
-                        MaxY = Math.Max(MaxY, float.Parse(atomPos[1]));
+                        MinX = Math.Min(MinX, position.x);
+
+                        MaxX = Math.Max(MaxX, position.x);
+
                         float reactionWidth = MaxX - MinX;
                         var width = Camera.main.orthographicSize * 2.0 * Screen.width / Screen.height;
 
                         scaleFactor = (float)width / reactionWidth;
 
 
+
+
+
                     }
-                    curReaction.transform.localScale = new Vector3(scaleFactor * 1.2f, scaleFactor * 1.2f, scaleFactor * 1.2f);
+
                     String atomName = atomPos[3] + i.ToString().PadLeft(namecounter.ToString().Length, '0');
                     if (frameIndex == 0)
                     {
@@ -1049,12 +1131,29 @@ public class MainScreen : MonoBehaviour
                     else
                     {
                         String atom = AtomNames[i];
-                        Vector3 newPosition = Vector3.Lerp(Children[atom].localPosition, position, Time.deltaTime * speed);
-                        Children[AtomNames[i]].localPosition = newPosition;
+                        //Vector3 newPosition = Vector3.Lerp(Children[atom].localPosition, position, Time.deltaTime * speed);
+                        Children[AtomNames[i]].localPosition = position;
                     }
 
 
+
                 }
+                if (beginingScaleFactor)
+                {
+                    if(scaleFactor > 0.36f)
+                    {
+                        //curReaction.transform.localScale = new Vector3(0.36f, 0.36f, 0.36f);
+                    }
+                    else
+                    {
+                        curReaction.transform.localScale = new Vector3(scaleFactor * 0.5f, scaleFactor * 0.5f, scaleFactor * 0.5f);
+                    }
+
+
+                    Debug.Log("First scale frame: " + frameIndex + "Scale Factor: " + scaleFactor);
+                    beginingScaleFactor = false;
+                }
+
                 foreach (String bond in bonds)
                 {
 
@@ -1116,25 +1215,19 @@ public class MainScreen : MonoBehaviour
 
 
                 namecounter = 1;
-                //atoms = new List<String>();
-                //bonds = new List<String>();
-                //currentIndex = (currentIndex + 1) % readText.Count;
+
                 frameIndex = (frameIndex + 1) % frames.Count;
                 break;
             }
 
-            if (framecounter == totalFrames)
-            {
-                framecounter = 0;
-
-            }
 
             // cylinders.Clear();
 
 
             //update the progress with frameIndex/totalFrames as a integer
-            UpdateProgressBar(Mathf.FloorToInt((float)frameIndex / (float)totalFrames * 100));
+            
         }
+        UpdateProgressBar(Mathf.FloorToInt((float)frameIndex / (float)totalFrames * 100));
     }
 
     public void ExpandObjects(GameObject objectToExpand, Vector3 startPoint, Vector3 endPoint, string mode)
@@ -1187,28 +1280,17 @@ public class MainScreen : MonoBehaviour
 
                 // 2. Adjust the number of copies and their positioning based on the actual height
                 float cylinderHeight = objectToExpand.transform.localScale.y;
-                int numberOfCopies = Mathf.FloorToInt(totalDistance / 0.33f);
+                int numberOfCopies = Mathf.FloorToInt(totalDistance / 0.25f);
                 Vector3 direction = (endPoint - startPoint).normalized; // Adjusted direction
                 Vector3 currentPosition = startPoint;
                 for (int i = 0; i < numberOfCopies; i++)
                 {
-                    float t = numberOfCopies > 1 ? (float)i / (numberOfCopies - 1) : 0;
-                    Vector3 newPosition = Vector3.Lerp(startPoint, endPoint, t);
-
-                    if (float.IsNaN(newPosition.x) || float.IsNaN(newPosition.y) || float.IsNaN(newPosition.z))
-                    {
-                        Debug.LogError("Trying to instantiate with NaN position: " + t + newPosition + startPoint + endPoint);
-                        return;
-                    }
-
 
                     GameObject newObj = Instantiate(objectToExpand, currentPosition, Quaternion.identity, transform);
 
-
-                    //newObj.transform.rotation = Quaternion.LookRotation(direction);
-                    currentPosition += direction * 0.33f;
+                    currentPosition += direction * 0.25f;
                     newObj.transform.rotation = Quaternion.LookRotation(direction, Vector3.up) * Quaternion.FromToRotation(Vector3.up, Vector3.forward);
-                    newObj.transform.localScale = new Vector3(newObj.transform.localScale.x, 0.33f, newObj.transform.localScale.z);
+                    newObj.transform.localScale = new Vector3(newObj.transform.localScale.x, 0.5f, newObj.transform.localScale.z);
                     instantiatedObjects.Add(newObj);
                     newObj.transform.SetParent(curBond.transform);
                 }
@@ -1232,8 +1314,8 @@ public class MainScreen : MonoBehaviour
 
     void ColorAllButtons()
     {
-        var fastForwardIcon = Resources.Load<Texture2D>("fast-forward-100");
-        var fastBackwardIcon = Resources.Load<Texture2D>("rewind-100");
+        var fastForwardIcon = Resources.Load<Texture2D>("icons/fast-forward-512");
+        var fastBackwardIcon = Resources.Load<Texture2D>("icons/rewind");
         var backButtonIcon = Resources.Load<Texture2D>("backward-96");
 
         fastForwardButton = rootElement.Q<Button>("fastforward");
@@ -1257,7 +1339,9 @@ public class MainScreen : MonoBehaviour
             // Note: This specific approach does not apply directly as UI Toolkit does not support backgroundImageTintColor in USS
             // You'd need to adjust the material or shader of the image asset used or manage color tinting through other means
             fastBackwardButton.style.backgroundImage = new StyleBackground(fastBackwardIcon);
-            fastBackwardButton.style.unityBackgroundImageTintColor = Color.blue; // RGBA
+            //set the color of the button to be "#3FA2F6"
+            //fastBackwardButton.style.unityBackgroundImageTintColor = new Color(0.2f, 0.2275f, 0.451f);
+            fastBackwardButton.style.unityBackgroundImageTintColor = Color.blue;
         }
         fastBackwardButton.RegisterCallback<ClickEvent>(evt =>
         {
@@ -1302,6 +1386,7 @@ public class MainScreen : MonoBehaviour
         frameSlider = rootElement.Q<Slider>("Slider");
         // Set the slider range
         frameSlider.lowValue = 0;
+        frameSlider.highValue = 100f;
         // Listen to value changes (when the user moves the slider)
         frameSlider.RegisterValueChangedCallback(evt =>
         {
@@ -1324,11 +1409,12 @@ public class MainScreen : MonoBehaviour
     {
         // Implement your logic to change the content to the specified frame
         //Debug.Log($"Jumping to frame: {frameIndex}");
-        int frame = Mathf.FloorToInt((float)percentage / 100 * frames.Count);
-        JumpToTS(frame);
+        int frame = Mathf.Max(Mathf.FloorToInt((float)percentage / 100 * frames.Count)-1, 0);
+        frameIndex = frame;
+        RenderFrame();
     }
 
-    void JumpToTS(int TSFrame)
+    void JumpToTS(ClickEvent evt, int TSFrame)
     {
         frameIndex = TSFrame;
         RenderFrame();
@@ -1338,16 +1424,24 @@ public class MainScreen : MonoBehaviour
     {
         if (frameSlider != null)
         {
-            isUpdatingFromCode = true;
-            frameSlider.value = progress;
-            isUpdatingFromCode = false;
+            StartCoroutine(UpdateSliderValue(progress));
         }
+    }
+
+    IEnumerator UpdateSliderValue(float progress)
+    {
+        isUpdatingFromCode = true;
+        frameSlider.value = progress;
+        yield return null; // Wait for one frame to ensure the value is processed
+        isUpdatingFromCode = false;
     }
 
     void UpdateIcon(bool isPlaying)
     {
-        var icon = isPlaying ? pauseIcon : playIcon;
-        playPauseToggle.style.backgroundImage = new StyleBackground(icon.texture);
+        var playIcon512 = Resources.Load<Texture2D>("icons/play-512");
+        var pauseIcon512 = Resources.Load<Texture2D>("icons/pause-512");
+        var icon = isPlaying ? pauseIcon512 : playIcon512;
+        playPauseToggle.style.backgroundImage = new StyleBackground(icon);
         playPauseToggle.style.unityBackgroundImageTintColor = Color.blue;
     }
 

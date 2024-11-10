@@ -1,5 +1,13 @@
+* {
+    -unity-font: url("project://database/Assets/Fonts/Roboto-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Fonts/Roboto-Regular SDF.asset");
+
+}
+
+
+
 .my-button {
-    color: white;
+    color: black;
     background-color: lightblue;
     font-size: 42px;
     padding: 5px;
@@ -41,18 +49,21 @@
 
 #Slider #unity-tracker {
     background-color: rgb(56, 122, 223);
-    border-color: rgb(255, 255, 255);
+    border-color: rgb(56, 122, 223);
     border-width: 2px;
+    top: 60%;
+    margin-top: 0px;
+     border-radius: 10px;
 }
 
 #Slider #unity-dragger {
-    background-color: rgb(0, 0, 255);
+    background-color: white;
     border-color: #DCDCDC;
-    border-width: 2px;
+    border-width: 4px;
     border-radius: 50%; /* Make it a circle */
     border-style: solid;
-    width: 20px; /* Adjust the size */
-    height: 20px; /* Adjust the size */
+    width: 40px; /* Adjust the size */
+    height: 40px; /* Adjust the size */
     max-height: none; /* Override any max-height restrictions */
 }
 
@@ -64,16 +75,33 @@
 
 .my-toggle-button {
     color: lightblue;
-    font-size: 40px;
+    font-size: 30px;
     margin-right: 20px;
     align-self: flex-end;
     margin-bottom: 5px;
+}
+
+/* Style the label to look like a round button */
+#expandall > .unity-toggle__label {
+    background-color: lightblue;
+    width: 250 px;
+    color: white;
+    border-radius: 15px;
+    padding: 10px 20px;
+    text-align: center;
+    cursor: pointer;
+    border: 2px solid #005fa3;
+    transition: background-color 0.3s, border-color 0.3s;
 }
 
 .toggleInput .unity-toggle__checkmark {
     display: none;
     opacity: 0;
     background-color: red;
+}
+
+#expandall > .unity-toggle__input {
+    display: none;
 }
 
 .unity-base-dropdown__item {
@@ -144,4 +172,8 @@
     height: 50px;
     width: 50px;
     transition: transform 0.1s ease-in-out;
+}
+
+#expandall > .unity-base-field__label {
+    min-width: 60px;
 }

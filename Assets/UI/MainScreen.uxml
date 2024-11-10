@@ -1,24 +1,28 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <Style src="project://database/Assets/UI/MainScreen.uss?fileID=7433441132597879392&amp;guid=b353b70d7d48cf54baae9c9c543dcb25&amp;type=3#MainScreen" />
+    <ui:VisualElement name="SafeAreaOffset" style="flex-grow: 1; background-color: rgb(255, 255, 255); min-width: 3000px; min-height: 10px; position: absolute;" />
     <SafeAreaManager>
         <ui:VisualElement>
             <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); min-width: 3000px; min-height: 3000px; position: relative;" />
-            <ui:VisualElement name="ui_page_1" class="ui_page" style="position: absolute; flex-grow: 1; width: 100%; height: 95%; left: 0; top: 0; right: 0; bottom: 0; margin-top: 0; padding-top: 5%;">
+            <ui:VisualElement name="ui_page_1" class="ui_page" style="position: absolute; flex-grow: 1; width: 100%; height: 100%; left: 0; top: 0; right: 0; bottom: 0; margin-top: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0;">
                 <ui:VisualElement name="back_button_holder" style="position: relative; flex-grow: 0; width: 100%; left: 0; top: 0; right: 0; bottom: 0; margin-top: 0; background-color: rgb(255, 255, 255);">
                     <ui:Button name="back_button_1" display-tooltip-when-elided="true" class="back_button_style" style="background-color: rgba(0, 0, 0, 0); border-top-width: 0; border-right-width: 0; border-bottom-width: 0; border-left-width: 0; margin-right: 4%; margin-left: 4%;" />
                 </ui:VisualElement>
                 <ui:Toggle label="Toggle" name="expandall" />
                 <ui:ScrollView name="container" touch-scroll-type="Clamped" elasticity="0.1" scroll-deceleration-rate="0.5" class="my-scrollview" style="margin-top: 5px; opacity: 1; height: auto; flex-grow: 1;" />
             </ui:VisualElement>
-            <ui:VisualElement name="ui_page_2" class="ui_page" style="position: absolute; flex-grow: 1; display: flex; left: 0; top: 0; right: 0; bottom: 0; visibility: hidden; background-color: rgba(0, 0, 0, 0); justify-content: space-between; align-items: stretch;">
+            <ui:VisualElement name="ui_page_2" class="ui_page" style="position: absolute; flex-grow: 1; display: flex; left: 0; top: 0; right: 0; bottom: 0; visibility: hidden; background-color: rgba(0, 0, 0, 0); justify-content: space-between; align-items: stretch; height: 100%; width: 100%;">
                 <ui:VisualElement name="back_button_holder" style="position: relative; flex-grow: 0; width: 100%; left: 0; top: 0; right: 0; bottom: 0; margin-top: 0; background-color: rgb(255, 255, 255);">
                     <ui:Button name="back_button_2" display-tooltip-when-elided="true" class="back_button_style" style="background-color: rgba(0, 0, 0, 0); border-top-width: 0; border-right-width: 0; border-bottom-width: 0; border-left-width: 0; margin-right: 4%; margin-left: 4%;" />
                 </ui:VisualElement>
                 <ui:VisualElement name="Top" style="position: relative; left: 0; top: 0; right: 0; background-color: rgb(255, 255, 255); min-height: initial; align-items: center; align-self: center; justify-content: space-between; flex-direction: column; flex-grow: 1; flex-wrap: nowrap; height: 10%; width: 100%;">
-                    <ui:Label name="reaction_name" text="Initial Text" style="font-size: 50px;" />
+                    <ui:Label name="reaction_name" text="Initial Text" style="flex-wrap: wrap; white-space: normal; text-overflow: clip; max-width: 90%;" />
                     <ui:Label name="elements_angle" style="font-size: 25px; align-self: stretch;" />
                 </ui:VisualElement>
-                <ui:VisualElement name="ViewWindow" style="position: relative; left: 0; top: 0; right: 0; background-color: rgba(255, 255, 255, 0); min-height: auto; align-items: center; align-self: center; justify-content: space-between; flex-direction: column; flex-grow: 1; flex-wrap: wrap; height: 65%; width: 100%;" />
+                <ui:VisualElement name="ViewWindow" style="position: relative; left: 0; top: 0; right: 0; background-color: rgba(255, 255, 255, 0); min-height: auto; align-items: center; align-self: center; justify-content: flex-end; flex-direction: column; flex-grow: 1; flex-wrap: wrap; height: 65%; width: 100%;">
+                    <ui:Label name="description" style="font-size: 25px; align-self: stretch; justify-content: flex-start; flex-wrap: wrap; max-width: none; white-space: normal; text-overflow: ellipsis; background-color: rgb(255, 255, 255); width: 95%; align-items: auto; justify-content: flex-start; bottom: 0; margin-bottom: 4px; margin-left: 0; padding-left: 4%;" />
+                    <ui:Button text="\u2191 Show Rxn Info" parse-escape-sequences="true" display-tooltip-when-elided="true" name="Description_Button" style="width: 300px; color: rgb(0, 0, 255); background-color: rgba(0, 0, 0, 0); border-top-width: 0; border-right-width: 0; border-bottom-width: 0; border-left-width: 0; margin-right: 4%; margin-left: 4%; font-size: 30px; align-self: flex-end;" />
+                </ui:VisualElement>
                 <ui:VisualElement name="Bottom" style="position: relative; bottom: 0; right: 0; left: 0; background-color: rgb(255, 255, 255); min-height: auto; align-items: center; align-self: center; justify-content: space-between; flex-direction: column; flex-grow: 1; flex-wrap: wrap; height: 25%; width: 100%;">
                     <ui:Slider picking-mode="Ignore" name="Slider" value="0" high-value="100" style="background-color: rgba(0, 23, 255, 0); max-width: none; width: 80%; align-self: center; justify-content: center;" />
                     <ui:VisualElement name="VisualElement" style="flex-grow: 1; justify-content: space-around; flex-direction: row; align-items: center; align-self: flex-start; width: 100%; flex-wrap: wrap;">
